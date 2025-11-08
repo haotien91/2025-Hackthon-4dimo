@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
+// import Link from "next/link";
+import UidLink from "@/components/uid-link";
 import { Ticket, Map, Search } from "lucide-react";
 
 // ====== 可調整 ======
@@ -65,7 +66,7 @@ function formatSmartRange(e: EventItem) {
 }
 
 // ====== 工具：抓 API，容錯去掉收尾多餘的 % ======
-async function fetchEvents(url: string): Promise<any[]> {
+async function fetchEvents(url: string): Promise<unknown[]> {
   try {
     const res = await fetch(url);
     const text = await res.text();
@@ -97,7 +98,7 @@ type EventItem = {
 };
 
 // 取得 event id（兼容多種欄位）
-function getEventId(e: Partial<EventItem> & Record<string, any>) {
+function getEventId(e: Partial<EventItem> & Record<string, unknown>) {
   return e.event_id ?? e.id ?? e.eventId;
 }
 
@@ -172,7 +173,7 @@ function Swiper({
         {slides.map((s, i) => {
           const href = s.id != null ? `/template?id=${encodeURIComponent(String(s.id))}` : undefined;
           return href ? (
-            <Link
+            <UidLink
               key={`${s.src}-${i}`}
               href={href}
               className={`absolute inset-0 block ${i === idx ? "pointer-events-auto" : "pointer-events-none"}`}
@@ -188,7 +189,7 @@ function Swiper({
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
               />
-            </Link>
+            </UidLink>
           ) : (
             <span
               key={`${s.src}-${i}`}
@@ -276,9 +277,9 @@ function EventCard({ e }: { e: EventItem }) {
   );
 
   return href ? (
-    <Link href={href} className="block">
+    <UidLink href={href} className="block">
       {body}
-    </Link>
+    </UidLink>
   ) : (
     <div className="block cursor-not-allowed opacity-60" title="此活動缺少 ID">
       {body}
@@ -297,7 +298,7 @@ export default function HomePage() {
     (async () => {
       setLoadingRecent(true);
       const data = await fetchEvents(`${API_BASE}/hot`);
-      setRecent(data.slice(0, 6));
+      setRecent(data.slice(0, 6) as EventItem[]);
       setLoadingRecent(false);
     })();
   }, []);
@@ -308,7 +309,7 @@ export default function HomePage() {
       setLoadingRandom(true);
       const data = await fetchEvents(`${API_BASE}/recent`);
       // 條列給多一點，讓頁面可往下捲
-      setRandom(data.slice(0, 12));
+      setRandom(data.slice(0, 12) as EventItem[]);
       setLoadingRandom(false);
     })();
   }, []);
@@ -394,7 +395,10 @@ export default function HomePage() {
           ) : random.length > 0 ? (
             <div className="space-y-4">
               {random.map((e, i) => (
-                <EventCard e={e} key={(getEventId(e) as any) ?? e.detail_page_url ?? e.title ?? i} />
+                <EventCard
+                  e={e}
+                  key={String(getEventId(e) ?? e.detail_page_url ?? e.title ?? i)}
+                />
               ))}
             </div>
           ) : (
@@ -403,12 +407,12 @@ export default function HomePage() {
         </section>
 
         {/* CTA：搜尋更多展演 */}
-        <Link
+        <UidLink
           href={{ pathname: "/search", query: { openFilter: "1" } }}
           className="mt-3 mb-2 block rounded-xl border border-neutral-200 px-1 py-2 text-center text-xs font-medium text-neutral-500 bg-white shadow-sm active:scale-95"
         >
           沒看到想看的嗎？搜尋更多展演
-        </Link>
+        </UidLink>
       </div>
     </div>
   );
@@ -426,7 +430,7 @@ function RoundBtn({
   color?: string;
 }) {
   return (
-    <Link
+    <UidLink
       href={href}
       className="flex flex-col items-center gap-3 text-neutral-800 no-underline"
     >
@@ -437,6 +441,6 @@ function RoundBtn({
         {icon /* 使用 currentColor，因此會吃到上層 color */}
       </div>
       <div className="text-sm">{label}</div>
-    </Link>
+    </UidLink>
   );
 }

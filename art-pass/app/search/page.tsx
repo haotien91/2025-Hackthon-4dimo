@@ -1,9 +1,10 @@
 // app/search/page.tsx
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import UidLink from "@/components/uid-link";
 
 /* ========= 可調整 ========= */
 const ACCENT = "rgb(90, 180, 197)";
@@ -43,6 +44,11 @@ type EventItem = {
   venue_name?: string;
   venue_preview?: string;
 };
+
+// 取得 event id（兼容多種欄位）
+function getEventId(e: Partial<EventItem> & Record<string, unknown>) {
+  return e.event_id ?? (e as any)?.id ?? (e as any)?.eventId ?? e.detail_page_url;
+}
 
 /* ========= 共用：時間格式 ========= */
 const DEFAULT_TZ = "Asia/Taipei";
@@ -148,16 +154,50 @@ async function fetchSearch(params: URLSearchParams, signal?: AbortSignal): Promi
   return Array.isArray(json) ? json : [];
 }
 
+async function fetchPassport(uid: string): Promise<Set<string>> {
+  try {
+    const url = `${API_BASE}/users/${encodeURIComponent(uid)}/passport`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const cleaned = text.trim().replace(/%+$/, "");
+    const json = JSON.parse(cleaned) as { passport?: Array<{ event_id: string; added_at: number }> };
+    const eventIds = json.passport?.map((e) => String(e.event_id)) || [];
+    return new Set(eventIds);
+  } catch (err) {
+    console.error("fetchPassport error:", err);
+    return new Set();
+  }
+}
+
 /* ========= 卡片（沿用首頁 CSS） ========= */
-function EventCard({ e }: { e: EventItem }) {
+function EventCard({
+  e,
+  passportEventIds,
+  onPassportChange,
+}: {
+  e: EventItem;
+  passportEventIds?: Set<string>;
+  onPassportChange?: (eventId: string, added: boolean) => void;
+}) {
   const img = (e.image_url || e.image_url_preview) ?? "";
   const venue = e.venue_name || e.venue_preview || "";
   const timeText = formatDateRangeOnly(e);
 
-  const [marked, setMarked] = useState(false);
-
   // ✅ 從各種可能欄位拿 id
   const id = e.event_id ?? (e as any)?.id ?? (e as any)?.eventId;
+  const eventIdStr = id ? String(id) : null;
+  const isInPassport = eventIdStr ? passportEventIds?.has(eventIdStr) ?? false : false;
+
+  const [marked, setMarked] = useState(isInPassport);
+  const [posting, setPosting] = useState(false);
+
+  // 當 passportEventIds 改變時，同步更新 marked 狀態
+  useEffect(() => {
+    if (eventIdStr) {
+      setMarked(passportEventIds?.has(eventIdStr) ?? false);
+    }
+  }, [eventIdStr, passportEventIds]);
+
   const href = id ? `/template?id=${encodeURIComponent(String(id))}` : undefined;
 
   const CardInner = (
@@ -190,7 +230,63 @@ function EventCard({ e }: { e: EventItem }) {
         aria-label={marked ? "取消標記" : "標記為去過（暫無功能）"}
         aria-pressed={marked}
         title={marked ? "取消標記" : "標記為去過"}
-        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMarked((v) => !v); }}
+        onClick={async (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (!id || posting) return;
+          try {
+            setPosting(true);
+            // 從網址取得 uid
+            const uid =
+              typeof window !== "undefined"
+                ? new URLSearchParams(window.location.search).get("uid") || ""
+                : "";
+            if (!uid) {
+              console.warn("Missing uid in URL; skip passport POST");
+              return;
+            }
+            const eventId = String(id);
+
+            if (!marked) {
+              // 新增到 passport（POST）
+              const url = `${API_BASE}/users/${encodeURIComponent(uid)}/passport?event_id=${encodeURIComponent(
+                eventId
+              )}`;
+              console.log("[passport] POST", url);
+              const res = await fetch(url, { method: "POST" });
+              const text = await res.text();
+              const cleaned = text.trim().replace(/%+$/, "");
+              const json = JSON.parse(cleaned) as { added?: boolean; message?: string };
+              const success = typeof json.added === "boolean" ? json.added : true;
+              setMarked(success);
+              if (success && onPassportChange) {
+                onPassportChange(eventId, true);
+              }
+              if (json?.message) console.log("[passport]", json.message);
+              return;
+            }
+
+            // 取消（DELETE）
+            const delUrl = `${API_BASE}/users/${encodeURIComponent(uid)}/passport/${encodeURIComponent(
+              eventId
+            )}`;
+            console.log("[passport] DELETE", delUrl);
+            const res = await fetch(delUrl, { method: "DELETE" });
+            const text = await res.text();
+            const cleaned = text.trim().replace(/%+$/, "");
+            const json = JSON.parse(cleaned) as { removed?: boolean; message?: string };
+            const success = typeof json.removed === "boolean" ? json.removed : true;
+            setMarked(!success);
+            if (success && onPassportChange) {
+              onPassportChange(eventId, false);
+            }
+            if (json?.message) console.log("[passport]", json.message);
+          } catch (err) {
+            console.error("passport POST error:", err);
+          } finally {
+            setPosting(false);
+          }
+        }}
         className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full shadow-md backdrop-blur
                    hover:opacity-95 active:scale-95 transition border border-neutral-200"
         style={{ backgroundColor: "#fff", color: marked ? ACCENT : "#8E8E8E" }}
@@ -206,7 +302,7 @@ function EventCard({ e }: { e: EventItem }) {
       </button>
 
       {href ? (
-        <Link href={href} className="block">{CardInner}</Link>
+        <UidLink href={href} className="block">{CardInner}</UidLink>
       ) : (
         <div className="block cursor-not-allowed opacity-60" title="此活動缺少 ID">{CardInner}</div>
       )}
@@ -242,6 +338,9 @@ function SearchPageInner() {
   const [loading, setLoading] = useState(false);
   const [firstLoad, setFirst] = useState(true);
 
+  // Passport 狀態（已標記的 event_id）
+  const [passportEventIds, setPassportEventIds] = useState<Set<string>>(new Set());
+
   const FIRST_MIN_SPIN_MS = 1200; // 首次載入至少轉 2 秒
   const NEXT_MIN_SPIN_MS  = 800;  // 無限捲動每頁至少轉 0.6 秒（可視覺感受調整）
 
@@ -256,7 +355,11 @@ function SearchPageInner() {
       setOpen(true);
       const sp = new URLSearchParams(searchParams);
       sp.delete("openFilter");
-      router.replace(`/search${sp.size ? `?${sp.toString()}` : ""}`, { scroll: false });
+      // 確保 uid 一直保留在網址上（若有帶進來）
+      const uid = searchParams.get("uid");
+      if (uid && !sp.has("uid")) sp.set("uid", uid);
+      const qs = sp.toString();
+      router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false });
     }
   }, [searchParams, router]);
 
@@ -265,6 +368,31 @@ function SearchPageInner() {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // 載入 passport（當 uid 改變時）
+  useEffect(() => {
+    const uid = searchParams.get("uid");
+    if (uid) {
+      fetchPassport(uid).then((ids) => {
+        setPassportEventIds(ids);
+      });
+    } else {
+      setPassportEventIds(new Set());
+    }
+  }, [searchParams]);
+
+  // Passport 變更 handler
+  const handlePassportChange = useCallback((eventId: string, added: boolean) => {
+    setPassportEventIds((prev) => {
+      const next = new Set(prev);
+      if (added) {
+        next.add(eventId);
+      } else {
+        next.delete(eventId);
+      }
+      return next;
+    });
   }, []);
 
   // 建立查詢參數
@@ -465,7 +593,12 @@ function SearchPageInner() {
           )}
 
           {items.map((e, i) => (
-            <EventCard e={e} key={e.detail_page_url ?? e.title ?? `k-${i}`} />
+            <EventCard
+              e={e}
+              key={String(getEventId(e) ?? `${e.detail_page_url ?? "k"}-${i}`)}
+              passportEventIds={passportEventIds}
+              onPassportChange={handlePassportChange}
+            />
           ))}
 
           {/* 底部載入中 / 沒有更多 */}

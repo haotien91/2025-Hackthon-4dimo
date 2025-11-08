@@ -3,7 +3,8 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
+// import Link from "next/link";
+import UidLink from "@/components/uid-link";
 
 export const dynamic = "force-dynamic"; // 只包一層，避免 /template 在 build/prerender 時報錯
 
@@ -109,7 +110,7 @@ function TemplateInner() {
           event_description: data.event_description ?? data.description ?? data.summary ?? data.content ?? "",
         };
         setEv(normalized);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error(e);
         setError("載入活動資料失敗");
       } finally {
@@ -202,15 +203,13 @@ function TemplateInner() {
             )}
 
             <div className="mt-4">
-              <Link
+              <UidLink
                 href={link}
-                target="_blank"
-                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm text-white font-bold"
                 style={{ backgroundColor: ACCENT }}
               >
                 前往活動頁
-              </Link>
+              </UidLink>
             </div>
           </div>
         </div>
