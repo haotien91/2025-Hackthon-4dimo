@@ -2,24 +2,34 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+// 保留本地樣式（若打包規則擋到，下面還會再用 CDN 保險）
+import "leaflet/dist/leaflet.css";
 
 const ACCENT = "rgb(90, 180, 197)";
 
 // 先用 3 個台北的美術館
 const MUSEUMS = [
-  { name: "台北市立美術館", lat: 25.0726, lng: 121.5240 },
+  { name: "台北市立美術館", lat: 25.0726, lng: 121.524 },
   { name: "台北當代藝術館", lat: 25.0496, lng: 121.5169 },
   { name: "國立故宮博物院", lat: 25.1024, lng: 121.5485 },
 ];
 
-export default function NearbyPage() {
-  const router = useRouter();
+// 確保在 Client 載入 Leaflet 的 CSS（避免某些設定下本地 CSS 沒進來）
+function ensureLeafletCss() {
+  const id = "leaflet-css-cdn";
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  document.head.appendChild(link);
+}
 
+export default function NearbyPage() {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any>(null);          // Leaflet.Map
-  const userMarkerRef = useRef<any>(null);   // Leaflet.Marker
-  const userCircleRef = useRef<any>(null);   // Leaflet.Circle
+  const mapRef = useRef<any>(null);        // Leaflet.Map
+  const userMarkerRef = useRef<any>(null); // Leaflet.Marker
+  const userCircleRef = useRef<any>(null); // Leaflet.Circle
   const watchIdRef = useRef<number | null>(null);
 
   const [hasGeo, setHasGeo] = useState(false);
@@ -28,9 +38,10 @@ export default function NearbyPage() {
     if (!mapDivRef.current || mapRef.current) return;
 
     (async () => {
-      // 動態載入，避免 SSR "window is not defined"
-      const L = await import("leaflet");
-      await import("leaflet/dist/leaflet.css");
+      ensureLeafletCss();
+
+      // ✅ 一定要拿 default 才是 L
+      const { default: L } = await import("leaflet");
 
       // 修正 Next.js 下 Leaflet 預設圖示無法載入（改用 CDN）
       // @ts-ignore
@@ -46,7 +57,7 @@ export default function NearbyPage() {
 
       // 初始中心抓第一個點
       const initial = MUSEUMS[0];
-      const map = L.map(mapDivRef.current, {
+      const map = L.map(mapDivRef.current!, {
         center: [initial.lat, initial.lng],
         zoom: 12,
         zoomControl: true,
@@ -65,8 +76,8 @@ export default function NearbyPage() {
         L.marker([p.lat, p.lng]).addTo(map).bindPopup(`<b>${p.name}</b>`);
       });
 
-      // 讓地圖以目前容器尺寸重算（避免 flex 佈局下初始閃爍）
-      setTimeout(() => map.invalidateSize(), 0);
+      // 讓地圖以目前容器尺寸重算（避免初次為 0 尺寸）
+      requestAnimationFrame(() => map.invalidateSize());
 
       // 嘗試抓使用者座標
       if (navigator.geolocation) {
@@ -106,6 +117,11 @@ export default function NearbyPage() {
         }
         if (fly) map.flyTo([lat, lng], 14, { duration: 0.8 });
       }
+
+      // 視窗尺寸變動時也重算一次
+      const onResize = () => map.invalidateSize();
+      window.addEventListener("resize", onResize);
+      map.once("unload", () => window.removeEventListener("resize", onResize));
     })();
 
     return () => {
@@ -133,10 +149,11 @@ export default function NearbyPage() {
 
   return (
     <div className="min-h-dvh w-full bg-neutral-50 flex flex-col">
-      {/* 置頂標題列（在最上面） */}
+      {/* 置頂標題列（先渲染標題，再渲染地圖） */}
       <div className="w-full">
         <div className="mx-auto max-w-[420px] px-3">
           <header className="mt-3 mb-3 h-12 flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 shadow-sm">
+            <div className="w-12" />
             <div className="text-base font-semibold text-neutral-800 text-center">
               藝文地圖
             </div>
@@ -149,7 +166,9 @@ export default function NearbyPage() {
       <div className="relative flex-1">
         <div
           ref={mapDivRef}
-          className="h-full w-full overflow-hidden bg-neutral-200"
+          className="w-full overflow-hidden bg-neutral-200"
+          // 明確高度：整個視窗高度扣掉標題(48px) + 上下 margin(12+12)
+          style={{ height: "calc(100dvh - 72px)" }}
         />
 
         {/* 右下角浮動鈕：定位到我 */}
