@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { FullBleedCard } from "@/components/passport/fullbleed-card";
+import MorphDialog, { type MorphOrigin } from "@/components/passport/morph-dialog";
 
 const API_BASE = "http://172.20.10.7:8000";
 
@@ -23,6 +24,36 @@ function ym(date: string): MonthKey {
 function displayYM(key: MonthKey) {
   const [y, m] = key.split("-");
   return `${y} 年 ${Number(m)} 月`;
+}
+
+// 根據 visitDate 計算相對時間標籤
+function getRelativeTimeLabel(visitDate: string): string {
+  const visit = new Date(visitDate);
+  const now = new Date();
+  const visitDay = new Date(visit.getFullYear(), visit.getMonth(), visit.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor((today.getTime() - visitDay.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "今天";
+  if (diffDays === 1) return "昨天";
+  if (diffDays === 2) return "前天";
+  if (diffDays <= 7) return "上週";
+
+  // 判斷是否為上個月
+  const visitMonth = visit.getMonth();
+  const visitYear = visit.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  // 上一個月（跨年也考慮）
+  const isLastMonth =
+    (visitYear === currentYear && visitMonth === currentMonth - 1) ||
+    (visitYear === currentYear - 1 && visitMonth === 11 && currentMonth === 0);
+
+  if (isLastMonth) return "上個月";
+
+  // 其他：顯示月份
+  return `${visitYear} 年 ${String(visitMonth + 1).padStart(2, "0")} 月`;
 }
 
 /* ========= API 函數 ========= */
@@ -52,7 +83,25 @@ async function fetchEventById(eventId: string): Promise<EventItem | null> {
       image_url: data.image_url ?? data.cover ?? data.image ?? data.image_url_preview ?? "",
       image_url_preview: data.image_url_preview ?? data.image_url ?? data.cover ?? data.image ?? "",
       title: data.title ?? "",
-    };
+      // extended fields
+      category: data.category,
+      date_time: data.date_time,
+      start_datetime_iso: data.start_datetime_iso,
+      end_datetime_iso: data.end_datetime_iso,
+      start_timestamp: data.start_timestamp,
+      end_timestamp: data.end_timestamp,
+      event_timezone: data.event_timezone,
+      venue_name: data.venue_name ?? data.venue ?? data.place ?? data.venue_preview,
+      venue_preview: data.venue_preview ?? data.venue_name ?? data.place,
+      event_description: data.event_description ?? data.description ?? data.summary ?? data.content,
+      organizer: data.organizer,
+      ticket_type: data.ticket_type,
+      ticket_price: data.ticket_price,
+      ticket_url: data.ticket_url,
+      contact_person: data.contact_person,
+      contact_phone: data.contact_phone,
+      event_url: data.event_url,
+    } as any;
   } catch (err) {
     console.error(`Failed to fetch event ${eventId}:`, err);
     return null;
@@ -73,6 +122,8 @@ function PassportPageInner() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<Array<EventItem & { visitDate: string }>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<(EventItem & { visitDate: string }) | null>(null);
+  const [origin, setOrigin] = useState<MorphOrigin | null>(null);
 
   // 載入 passport 資料
   useEffect(() => {
@@ -137,43 +188,58 @@ function PassportPageInner() {
     return Array.from(byMonth.entries());
   }, [events]);
 
-  const monthRefs = useRef<Record<MonthKey, HTMLDivElement | null>>({});
-  const [currentMonth, setCurrentMonth] = useState<MonthKey>(
-    groups[0]?.[0] ?? ym(new Date().toISOString())
-  );
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [currentLabel, setCurrentLabel] = useState<string>("現在");
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // 初始化：設定第一個卡片的標籤
+  useEffect(() => {
+    if (events.length > 0) {
+      const label = getRelativeTimeLabel(events[0].visitDate);
+      setCurrentLabel(label);
+    }
+  }, [events]);
+
+  // 追蹤最上面的卡片
   useEffect(() => {
     const io = new IntersectionObserver(
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]) {
-          const key = (visible[0].target as HTMLElement).dataset["month"] as MonthKey;
-          if (key) setCurrentMonth(key);
+          .map((e) => {
+            const rect = e.boundingClientRect;
+            return {
+              element: e.target as HTMLElement,
+              top: rect.top,
+              visitDate: (e.target as HTMLElement).dataset.visitDate,
+            };
+          })
+          .filter((v) => v.visitDate)
+          .sort((a, b) => a.top - b.top); // 最上面的在前
+
+        if (visible[0]?.visitDate) {
+          setCurrentLabel(getRelativeTimeLabel(visible[0].visitDate));
         }
       },
-      { rootMargin: "-20% 0px -60% 0px", threshold: [0.25, 0.5, 0.75] }
+      { rootMargin: "-10% 0px -80% 0px", threshold: [0, 0.1, 0.5, 1] }
     );
-    for (const [key] of groups) {
-      const el = monthRefs.current[key];
-      if (el) io.observe(el);
-    }
-    return () => io.disconnect();
-  }, [groups]);
 
-  const scrollToMonth = (key: MonthKey) => {
-    const el = monthRefs.current[key];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    cardRefs.current.forEach((el) => {
+      if (el) io.observe(el);
+    });
+
+    return () => io.disconnect();
+  }, [events]);
+
+  const scrollToCard = (event: EventItem & { visitDate: string }) => {
+    const eventId = event.event_id ? String(event.event_id) : undefined;
+    const cardKey = eventId || event.visitDate;
+    const el = cardRefs.current.get(cardKey);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  // 更新 currentMonth 當 groups 改變時
-  useEffect(() => {
-    if (groups.length > 0 && !groups.some(([key]) => key === currentMonth)) {
-      setCurrentMonth(groups[0][0]);
-    }
-  }, [groups, currentMonth]);
 
   if (loading) {
     return (
@@ -226,26 +292,35 @@ function PassportPageInner() {
             onClick={() => setPickerOpen((v) => !v)}
           >
             <h1 className="text-black text-l md:text-xl font-semibold">
-              {displayYM(currentMonth)}
+              {currentLabel}
             </h1>
           </div>
           {pickerOpen ? (
-            <div className="absolute left-1/2 z-20 w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-black/80 p-2 shadow-xl backdrop-blur">
-              <ul className="max-h-60 overflow-auto">
-                {groups.map(([key]) => (
-                  <li
-                    key={key}
-                    className={`rounded-lg px-3 py-2 text-sm text-white/90 hover:bg-white/10 ${
-                      key === currentMonth ? "bg-white/10" : ""
-                    }`}
-                    onClick={() => {
-                      setPickerOpen(false);
-                      scrollToMonth(key);
-                    }}
-                  >
-                    {displayYM(key)}
-                  </li>
-                ))}
+            <div className="absolute left-1/2 z-20 w-72 -translate-x-1/2 rounded-xl border border-white/10 bg-black/80 p-2 shadow-xl backdrop-blur">
+              <ul className="max-h-80 overflow-auto">
+                {events.map((it) => {
+                  const eventId = it.event_id ? String(it.event_id) : undefined;
+                  const cardKey = eventId || it.visitDate;
+                  const label = getRelativeTimeLabel(it.visitDate);
+                  const title = it.title || "未命名活動";
+                  const isCurrent = currentLabel === label;
+
+                  return (
+                    <li
+                      key={cardKey}
+                      className={`rounded-lg px-3 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer ${
+                        isCurrent ? "bg-white/10" : ""
+                      }`}
+                      onClick={() => {
+                        setPickerOpen(false);
+                        scrollToCard(it);
+                      }}
+                    >
+                      <div className="font-semibold">{label}</div>
+                      <div className="text-xs text-white/70 mt-0.5 truncate">{title}</div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ) : null}
@@ -255,14 +330,7 @@ function PassportPageInner() {
       {/* 內容：滿版卡片清單 */}
       <div className="mx-auto max-w-6xl px-6 md:px-10 lg:px-16">
         {groups.map(([key, items]) => (
-          <section
-            key={key}
-            ref={(el: HTMLElement | null) => {
-              if (el && "align" in el) monthRefs.current[key] = el as HTMLDivElement;
-            }}
-            data-month={key}
-            className="relative"
-          >
+          <section key={key} data-month={key} className="relative">
             <div className="sr-only">{displayYM(key)}</div>
             {items.map((it) => {
               const d = new Date(it.visitDate);
@@ -271,9 +339,24 @@ function PassportPageInner() {
               const dd = String(d.getDate()).padStart(2, "0");
               const stamp = `${yyyy}.${mm}.${dd}`; // 公元年.月月.日日
               const eventId = it.event_id ? String(it.event_id) : undefined;
+              const cardKey = eventId || it.visitDate;
               const imageUrl = it.image_url || "";
               return (
-                <div key={eventId || it.visitDate} className="py-1">
+                <div
+                  key={cardKey}
+                  ref={(el) => {
+                    if (el) cardRefs.current.set(cardKey, el);
+                  }}
+                  data-visit-date={it.visitDate}
+                  className="py-1"
+                  onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                    const ox = rect.left + window.scrollX;
+                    const oy = rect.top + window.scrollY;
+                    setOrigin({ x: ox, y: oy, width: rect.width, height: rect.height });
+                    setSelected(it);
+                  }}
+                >
                   <FullBleedCard
                     title={it.title || "未命名活動"}
                     imageUrl={imageUrl}
@@ -284,9 +367,30 @@ function PassportPageInner() {
             })}
           </section>
         ))}
-        {/* 最底部預留 1 張卡片高度 */}
-        <div className="w-screen -mx-6 md:-mx-10 lg:-mx-16 h-[220px] sm:h-[260px] md:h-[300px]" />
+        {/* 最底部預留半張卡片高度，帶提示文案 */}
+        <div className="h-[110px] sm:h-[130px] md:h-[150px] flex items-center justify-center">
+          <div className="flex items-center text-neutral-500">
+            <span
+              className="mr-2 block h-5 w-5 bg-current [mask-image:url('/footprint.png')] [mask-repeat:no-repeat] [mask-position:center] [mask-size:contain]"
+              aria-hidden="true"
+            />
+            <span>這是專屬於你的，獨一無二的足跡</span>
+          </div>
+        </div>
       </div>
+
+      {/* Morphing Dialog */}
+      {selected && (
+        <MorphDialog
+          open={!!selected}
+          event={selected}
+          origin={origin}
+          onClose={() => {
+            setSelected(null);
+            setOrigin(null);
+          }}
+        />
+      )}
     </main>
   );
 }

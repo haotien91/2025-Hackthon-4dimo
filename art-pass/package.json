@@ -11,8 +11,10 @@
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.0.2",
     "dseg": "^0.46.0",
+    "framer-motion": "^12.23.24",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.553.0",
+    "motion": "^12.23.24",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"

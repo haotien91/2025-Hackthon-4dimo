@@ -22,6 +22,9 @@ export function FullBleedCard({ title, imageUrl, bottomRightText, onClick }: Pro
       onClick={onClick}
     >
       <Image src={imageUrl} alt={title} fill sizes="100vw" className="object-cover" unoptimized />
+      {/* 半透明質感濾鏡：整體淡黑 + 自下而上漸層強化可讀性 */}
+      <div className="absolute inset-0 bg-black/20" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
 
       {/* 左上白字標題 */}
       <div className="absolute left-4 top-4 pr-6 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
