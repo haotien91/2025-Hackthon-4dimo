@@ -292,21 +292,21 @@ export default function HomePage() {
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(true);
 
-  // ====== 抓 /recent（上方：輪播） ======
+  // ====== 抓 /hot（上方：輪播） ======
   useEffect(() => {
     (async () => {
       setLoadingRecent(true);
-      const data = await fetchEvents(`${API_BASE}/recent`);
-      setRecent(data.slice(0, 5));
+      const data = await fetchEvents(`${API_BASE}/hot`);
+      setRecent(data.slice(0, 6));
       setLoadingRecent(false);
     })();
   }, []);
 
-  // ====== 抓 /random（下方：條列） ======
+  // ====== 抓 /recent（下方：條列） ======
   useEffect(() => {
     (async () => {
       setLoadingRandom(true);
-      const data = await fetchEvents(`${API_BASE}/random`);
+      const data = await fetchEvents(`${API_BASE}/recent`);
       // 條列給多一點，讓頁面可往下捲
       setRandom(data.slice(0, 12));
       setLoadingRandom(false);
