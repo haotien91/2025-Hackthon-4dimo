@@ -1,4 +1,4 @@
-export type MemoryItem = {
+export type PassportItem = {
   id: string;
   title: string;
   imageUrl: string;
@@ -6,7 +6,7 @@ export type MemoryItem = {
   time?: string; // HH:MM 可選，給右下角 LCD
 };
 
-export const memoryItems: MemoryItem[] = [
+export const passportItems: PassportItem[] = [
   {
     id: "m1",
     title: "夜間博物館：北美館 x 電音共演",

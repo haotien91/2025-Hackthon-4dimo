@@ -1,7 +1,7 @@
  "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FullBleedCard } from "@/components/memory/fullbleed-card";
-import { memoryItems } from "@/lib/memory-mock";
+import { FullBleedCard } from "@/components/passport/fullbleed-card";
+import { passportItems } from "@/lib/passport-mock";
 
 type MonthKey = string; // "2025-11"
 
@@ -15,10 +15,10 @@ function displayYM(key: MonthKey) {
   return `${y} 年 ${Number(m)} 月`;
 }
 
-export default function MemoryPage() {
+export default function PassportPage() {
   const groups = useMemo(() => {
-    const byMonth = new Map<MonthKey, typeof memoryItems>();
-    for (const item of [...memoryItems].sort(
+    const byMonth = new Map<MonthKey, typeof passportItems>();
+    for (const item of [...passportItems].sort(
       (a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()
     )) {
       const k = ym(item.visitDate);

@@ -186,7 +186,7 @@ art-pass/
 │   ├── page.tsx           # 首頁
 │   ├── explore/           # 找展演
 │   ├── nearby/            # 找身邊
-│   ├── memory/          # 找記憶
+│   ├── passport/          # 找記憶
 │   └── api/               # API Routes
 │
 ├── components/            # 共用組件

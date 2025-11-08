@@ -76,7 +76,7 @@
 │                                                 │
 │              ┌──────────┐                      │
 │              │找記憶    │                      │
-│              │/memory │                      │
+│              │/passport │                      │
 │              └──────────┘                      │
 │                                                 │
 │           ┌─────────────────┐                  │
@@ -255,7 +255,7 @@
 
 ---
 
-### 4. 找記憶 `/memory`
+### 4. 找記憶 `/passport`
 
 #### 佈局
 ```
@@ -321,8 +321,8 @@
   - 未來: 後端 API + Database（保存里程碑狀態、徽章）
 
 #### 數據來源
-- API: `/api/memory/list` (未來)
-- LocalStorage: `art-pass-memory` (MVP)
+- API: `/api/passport/list` (未來)
+- LocalStorage: `art-pass-passport` (MVP)
 
 ---
 
@@ -522,7 +522,7 @@ interface ScrollableCardsProps {
 
 ---
 
-### 5. `/api/memory/list` (GET)
+### 5. `/api/passport/list` (GET)
 
 **功能**: 獲取觀展歷程
 
@@ -535,7 +535,7 @@ interface ScrollableCardsProps {
       "totalVisits": 12,
       "currentStreak": 3
     },
-    "memory": [
+    "passport": [
       {
         "visitDate": "2025-11-09",
         "event": { ... }
@@ -549,7 +549,7 @@ interface ScrollableCardsProps {
 
 ---
 
-### 6. `/api/memory/add` (POST)
+### 6. `/api/passport/add` (POST)
 
 **功能**: 新增觀展記錄
 
@@ -625,7 +625,7 @@ interface Milestone {
 // 使用 Context API (簡單場景)
 interface AppState {
   favorites: string[];           // 收藏的展演 ID
-  memory: TimelineEntry[];     // 觀展記錄
+  passport: TimelineEntry[];     // 觀展記錄
   filters: FilterOptions;        // 當前篩選條件
   userLocation: {                // 用戶位置
     lat: number;
@@ -639,7 +639,7 @@ interface AppState {
 ```typescript
 const STORAGE_KEYS = {
   FAVORITES: 'art-pass-favorites',      // string[]
-  TIMELINE: 'art-pass-memory',        // TimelineEntry[]
+  TIMELINE: 'art-pass-passport',        // TimelineEntry[]
   LAST_LOCATION: 'art-pass-location',   // { lat, lng }
 };
 ```
@@ -661,7 +661,7 @@ art-pass/
 │   ├── nearby/
 │   │   └── page.tsx              # 找身邊頁
 │   │
-│   ├── memory/
+│   ├── passport/
 │   │   └── page.tsx              # 找記憶頁
 │   │
 │   └── api/
@@ -675,7 +675,7 @@ art-pass/
 │       │   └── nearby/
 │       │       └── route.ts      # 附近展演 API
 │       │
-│       └── memory/
+│       └── passport/
 │           ├── list/
 │           │   └── route.ts      # 觀展歷程 API
 │           └── add/

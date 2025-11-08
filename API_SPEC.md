@@ -458,7 +458,7 @@ export async function GET(request: Request) {
 
 ## 5. 觀展記錄
 
-### `GET /api/memory/list`
+### `GET /api/passport/list`
 
 **描述**: 獲取用戶的觀展歷程
 
@@ -473,7 +473,7 @@ export async function GET(request: Request) {
       "favoriteVenue": "國立故宮博物院",
       "favoriteCategory": "展覽"
     },
-    "memory": [
+    "passport": [
       {
         "id": "visit-uuid",
         "eventId": "event-uuid",
@@ -501,7 +501,7 @@ export async function GET() {
         totalVisits: 0,
         currentStreak: 0
       },
-      memory: []
+      passport: []
     }
   });
 }
@@ -509,7 +509,7 @@ export async function GET() {
 
 ---
 
-### `POST /api/memory/add`
+### `POST /api/passport/add`
 
 **描述**: 新增觀展記錄
 
@@ -537,7 +537,7 @@ export async function GET() {
 
 ---
 
-### `DELETE /api/memory/:id`
+### `DELETE /api/passport/:id`
 
 **描述**: 刪除觀展記錄
 

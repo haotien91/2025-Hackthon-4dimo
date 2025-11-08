@@ -55,7 +55,7 @@ art-pass/
 │   ├── page.tsx           # 首頁 ✅ 優先開發
 │   ├── explore/           # 找展演 ✅ 優先開發
 │   ├── nearby/            # 找身邊 🗺️ 需要 Google Maps
-│   ├── memory/          # 找記憶 📖
+│   ├── passport/          # 找記憶 📖
 │   └── api/               # API Routes
 │
 ├── components/            # 共用組件
@@ -460,7 +460,7 @@ export default async function Home() {
             <span className="font-medium">找身邊</span>
           </Link>
           
-          <Link href="/memory" className="flex flex-col items-center gap-2 p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+          <Link href="/passport" className="flex flex-col items-center gap-2 p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <span className="text-3xl">📖</span>
             <span className="font-medium">找記憶</span>
           </Link>
