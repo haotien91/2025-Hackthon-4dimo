@@ -104,13 +104,14 @@ export default function MorphDialog({
           showImage={true}
           imageHeight="h-1/2"
           showDescription={true}
-          showDate={true}
+          showDate={false}
           showVenue={false}
           showOrganizer={false}
           showOrganizerOverlay={true}
           showTickets={false}
           showContact={false}
-          showVisitButton={true}
+          showVisitButton={false}
+          descriptionTextClass="text-base md:text-lg"
         />
       </div>
     </div>,

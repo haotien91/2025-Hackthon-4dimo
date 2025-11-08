@@ -2,10 +2,17 @@
 
 import Image from "next/image";
 import localFont from "next/font/local";
+import { Noto_Serif_TC } from "next/font/google";
 import UidLink from "@/components/uid-link";
 
 const dseg = localFont({
   src: "../node_modules/dseg/fonts/DSEG7-Modern/DSEG7Modern-Regular.ttf",
+  display: "swap",
+});
+
+const notoSerifTC = Noto_Serif_TC({
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
   display: "swap",
 });
 
@@ -118,6 +125,7 @@ type Props = {
   showTickets?: boolean;
   showContact?: boolean;
   showVisitButton?: boolean;
+  descriptionTextClass?: string; // 調整描述字級（用於特定頁面）
 };
 
 export function EventDetail({
@@ -132,6 +140,7 @@ export function EventDetail({
   showTickets = true,
   showContact = true,
   showVisitButton = true,
+  descriptionTextClass = "text-sm",
 }: Props) {
   const img = event.image_url || event.image_url_preview || "";
   const title = event.title || "未命名活動";
@@ -180,9 +189,9 @@ export function EventDetail({
       )}
 
       <div className="flex-1 overflow-auto">
-        <div className="flex min-h-full flex-col items-center justify-center space-y-4 px-6 py-8 text-center text-black">
+        <div className={`${notoSerifTC.className} flex min-h-full flex-col items-start justify-start space-y-4 px-6 py-8 text-left text-black`}>
           {showDescription && desc && (
-            <p className="max-w-2xl break-words whitespace-pre-line text-sm leading-relaxed">{desc}</p>
+            <p className={`max-w-2xl break-words whitespace-pre-line leading-relaxed ${descriptionTextClass}`}>{desc}</p>
           )}
 
           {showDate && dateText && <div className="text-sm">{dateText}</div>}
