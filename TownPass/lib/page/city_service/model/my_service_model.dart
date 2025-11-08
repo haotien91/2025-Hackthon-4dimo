@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:town_pass/service/account_service.dart';
 import 'package:town_pass/gen/assets.gen.dart';
 
 // 先於 MyServiceItemId enum 加入新服務；
@@ -6,6 +8,8 @@ import 'package:town_pass/gen/assets.gen.dart';
 //
 // First, add new service within the MyServiceItemId enum;
 // Then add MyServiceItem within MyServiceIdExt extension.
+
+const String ART_PACE_URL = 'https://art-pass.vercel.app/';
 
 enum MyServiceItemId {
   dedicatedLine,
@@ -36,11 +40,18 @@ extension MyServiceIdExt on MyServiceItemId {
   MyServiceItem get item {
     return switch (this) {
       MyServiceItemId.dedicatedLine => MyServiceItem(
-          title: 'ChatGPT',
-          description: '使用ChatGPT搜尋',
-          icon: Assets.svg.icon1999phoneS.svg(),
+          title: '藝文足跡',
+          description: '留下足跡，共創未來的台北',
+          icon: Assets.svg.iconArtPalette.svg(),
           category: MyServiceCategory.cityService,
-          destinationUrl: 'https://chatgpt.com/',
+          destinationUrl: (() {
+            final uid = Get.isRegistered<AccountService>()
+                ? (Get.find<AccountService>().account?.id ?? '')
+                : '';
+            if (uid.isEmpty) return ART_PACE_URL;
+            final encoded = Uri.encodeComponent(uid);
+            return '${ART_PACE_URL}?uid=$encoded';
+          })(),
         ),
 
       MyServiceItemId.dedicatedLine => MyServiceItem(
