@@ -21,7 +21,7 @@ export function FullBleedCard({ title, imageUrl, bottomRightText, onClick }: Pro
       className="relative h-[220px] w-full overflow-hidden rounded-2xl sm:h-[260px] md:h-[300px]"
       onClick={onClick}
     >
-      <Image src={imageUrl} alt={title} fill sizes="100vw" className="object-cover" />
+      <Image src={imageUrl} alt={title} fill sizes="100vw" className="object-cover" unoptimized />
 
       {/* 左上白字標題 */}
       <div className="absolute left-4 top-4 pr-6 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">

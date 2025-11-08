@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cultureexpress.taipei",
       },
+      {
+        protocol: "http",
+        hostname: "172.20.10.7",
+      },
     ],
   },
 };
