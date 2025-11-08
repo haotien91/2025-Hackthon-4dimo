@@ -1,9 +1,11 @@
 // app/template/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic"; // 只包一層，避免 /template 在 build/prerender 時報錯
 
 const ACCENT = "rgb(90, 180, 197)";
 const DEFAULT_TZ = "Asia/Taipei";
@@ -46,7 +48,7 @@ function formatDateRangeOnly(e: EventItem) {
   return e.date_time || "";
 }
 
-/* 與 search 頁相同風格的 Spinner */
+/* 與 search 頁相同風格的 Spinner（保留你的寫法） */
 function Spinner({ size = 22, className = "" }: { size?: number; className?: string }) {
   const bw = Math.max(2, Math.floor(size / 10));
   return (
@@ -58,7 +60,26 @@ function Spinner({ size = 22, className = "" }: { size?: number; className?: str
   );
 }
 
-export default function TemplatePage() {
+/* ===== Suspense fallback：只包外層，不動你原本的 loading UI ===== */
+function SuspenseFallback() {
+  return (
+    <div className="min-h-dvh w-full bg-neutral-50">
+      <div className="mx-auto max-w-[480px] px-4 pb-8">
+        <header className="h-14 flex items-center justify-between">
+          <div className="text-lg font-semibold text-neutral-800">活動資訊</div>
+          <div className="w-16" />
+        </header>
+        <div className="py-10 flex items-center justify-center text-neutral-500 text-sm">
+          <Spinner />
+          <span className="ml-2">載入中…</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===== 你的原本頁面（僅把 default 改成內層，其他不改） ===== */
+function TemplateInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -197,5 +218,14 @@ export default function TemplatePage() {
         <div className="h-8" />
       </div>
     </div>
+  );
+}
+
+/* ===== 只做包裹，不改你的其他寫法 ===== */
+export default function TemplatePage() {
+  return (
+    <Suspense fallback={<SuspenseFallback />}>
+      <TemplateInner />
+    </Suspense>
   );
 }

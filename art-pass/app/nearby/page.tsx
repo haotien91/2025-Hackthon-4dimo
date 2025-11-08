@@ -2,17 +2,58 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// 保留本地樣式（若打包規則擋到，下面還會再用 CDN 保險）
 import "leaflet/dist/leaflet.css";
+import type * as LeafletNS from "leaflet";
 
 const ACCENT = "rgb(90, 180, 197)";
 
-// 先用 3 個台北的美術館
+// 3 個台北的美術館
 const MUSEUMS = [
   { name: "台北市立美術館", lat: 25.0726, lng: 121.524 },
   { name: "台北當代藝術館", lat: 25.0496, lng: 121.5169 },
   { name: "國立故宮博物院", lat: 25.1024, lng: 121.5485 },
 ];
+
+// 免費底圖清單（無金鑰）
+const BASEMAPS: Record<
+  string,
+  { url: string; options: Record<string, any> }
+> = {
+  標準: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    options: {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+    },
+  },
+  亮色: {
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    options: {
+      maxZoom: 20,
+      subdomains: "abcd",
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>',
+    },
+  },
+  暗色: {
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    options: {
+      maxZoom: 20,
+      subdomains: "abcd",
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>',
+    },
+  },
+  人道風: {
+    url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+    options: {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noreferrer">HOT</a>',
+    },
+  },
+};
 
 // 確保在 Client 載入 Leaflet 的 CSS（避免某些設定下本地 CSS 沒進來）
 function ensureLeafletCss() {
@@ -27,23 +68,25 @@ function ensureLeafletCss() {
 
 export default function NearbyPage() {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any>(null);        // Leaflet.Map
-  const userMarkerRef = useRef<any>(null); // Leaflet.Marker
-  const userCircleRef = useRef<any>(null); // Leaflet.Circle
+  const mapRef = useRef<any>(null);            // Leaflet.Map
+  const tileRef = useRef<any>(null);           // 目前底圖 layer
+  const userMarkerRef = useRef<any>(null);     // Leaflet.Marker
+  const userCircleRef = useRef<any>(null);     // Leaflet.Circle
   const watchIdRef = useRef<number | null>(null);
 
   const [hasGeo, setHasGeo] = useState(false);
+  const [styleName, setStyleName] = useState<keyof typeof BASEMAPS>("亮色");
 
+  // 初始化地圖
   useEffect(() => {
     if (!mapDivRef.current || mapRef.current) return;
 
     (async () => {
       ensureLeafletCss();
 
-      // ✅ 一定要拿 default 才是 L
-      const { default: L } = await import("leaflet");
+      const L = (await import("leaflet")).default as unknown as typeof LeafletNS;
 
-      // 修正 Next.js 下 Leaflet 預設圖示無法載入（改用 CDN）
+      // 修正 Leaflet 預設圖示（改用 CDN）
       // @ts-ignore
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -64,46 +107,38 @@ export default function NearbyPage() {
       });
       mapRef.current = map;
 
-      // OSM 公共磚塊
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
+      // 加入預設底圖
+      const bm = BASEMAPS[styleName];
+      tileRef.current = L.tileLayer(bm.url, bm.options).addTo(map);
 
-      // 放三個美術館點
+      // 三個美術館點
       MUSEUMS.forEach((p) => {
         L.marker([p.lat, p.lng]).addTo(map).bindPopup(`<b>${p.name}</b>`);
       });
 
-      // 讓地圖以目前容器尺寸重算（避免初次為 0 尺寸）
+      // 初次強制重算尺寸
       requestAnimationFrame(() => map.invalidateSize());
 
-      // 嘗試抓使用者座標
+      // 使用者座標
       if (navigator.geolocation) {
         setHasGeo(true);
         navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            placeOrUpdateUser(pos.coords.latitude, pos.coords.longitude, true);
-          },
+          (pos) => placeOrUpdateUser(pos.coords.latitude, pos.coords.longitude, true),
           () => {},
           { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
         );
         watchIdRef.current = navigator.geolocation.watchPosition(
-          (pos) => {
-            placeOrUpdateUser(pos.coords.latitude, pos.coords.longitude, false);
-          },
+          (pos) => placeOrUpdateUser(pos.coords.latitude, pos.coords.longitude, false),
           () => {},
           { enableHighAccuracy: true, maximumAge: 5000 }
         );
       }
 
       function placeOrUpdateUser(lat: number, lng: number, fly: boolean) {
+        if (!mapRef.current) return;
         const map = mapRef.current!;
         if (!userMarkerRef.current) {
-          userMarkerRef.current = L.marker([lat, lng], {
-            title: "你的位置",
-          }).addTo(map);
+          userMarkerRef.current = L.marker([lat, lng], { title: "你的位置" }).addTo(map);
           userCircleRef.current = L.circle([lat, lng], {
             radius: 60,
             color: ACCENT,
@@ -118,22 +153,36 @@ export default function NearbyPage() {
         if (fly) map.flyTo([lat, lng], 14, { duration: 0.8 });
       }
 
-      // 視窗尺寸變動時也重算一次
+      // 視窗尺寸變動時重算
       const onResize = () => map.invalidateSize();
       window.addEventListener("resize", onResize);
       map.once("unload", () => window.removeEventListener("resize", onResize));
     })();
 
     return () => {
-      if (watchIdRef.current != null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
   }, []);
+
+  // 切換底圖
+  useEffect(() => {
+    (async () => {
+      if (!mapRef.current) return;
+      const { default: L } = await import("leaflet");
+      // 先移除舊底圖
+      if (tileRef.current) {
+        mapRef.current.removeLayer(tileRef.current);
+        tileRef.current = null;
+      }
+      // 加入新底圖
+      const bm = BASEMAPS[styleName];
+      tileRef.current = L.tileLayer(bm.url, bm.options).addTo(mapRef.current);
+    })();
+  }, [styleName]);
 
   const locateMe = () => {
     if (!navigator.geolocation || !mapRef.current) return;
@@ -149,7 +198,7 @@ export default function NearbyPage() {
 
   return (
     <div className="min-h-dvh w-full bg-neutral-50 flex flex-col">
-      {/* 置頂標題列（先渲染標題，再渲染地圖） */}
+      {/* 置頂標題列（置中） */}
       <div className="w-full">
         <div className="mx-auto max-w-[420px] px-3">
           <header className="mt-3 mb-3 h-12 flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 shadow-sm">
@@ -167,8 +216,7 @@ export default function NearbyPage() {
         <div
           ref={mapDivRef}
           className="w-full overflow-hidden bg-neutral-200"
-          // 明確高度：整個視窗高度扣掉標題(48px) + 上下 margin(12+12)
-          style={{ height: "calc(100dvh - 72px)" }}
+          style={{ height: "calc(100dvh - 72px)" }} // 48px header + 24px margin
         />
 
         {/* 右下角浮動鈕：定位到我 */}
@@ -181,6 +229,28 @@ export default function NearbyPage() {
         >
           📍
         </button>
+
+        {/* 右上角：底圖切換（你的風格） */}
+        <div className="absolute top-4 right-4 z-50 rounded-xl border border-neutral-200 bg-white/90 shadow-sm backdrop-blur px-2 py-1 flex gap-1">
+          {Object.keys(BASEMAPS).map((k) => {
+            const active = k === styleName;
+            return (
+              <button
+                key={k}
+                onClick={() => setStyleName(k as keyof typeof BASEMAPS)}
+                className="px-2.5 py-1 text-xs rounded-lg border transition active:scale-95"
+                style={
+                  active
+                    ? { backgroundColor: ACCENT, borderColor: ACCENT, color: "#fff" }
+                    : { backgroundColor: "#fff", borderColor: "#e5e7eb", color: "#374151" }
+                }
+                aria-pressed={active}
+              >
+                {k}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
