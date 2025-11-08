@@ -30,19 +30,16 @@ interface Event {
   end_timestamp: number;               // Unix timestamp (秒)
   
   // === 地點資訊 ===
-  venue_preview: string;               // 場館名稱
   latitude: number;                    // 緯度
   longitude: number;                   // 經度
   google_maps_url: string;             // Google Maps 連結
   
   // === 票務資訊 ===
-  ticket_type_preview: string;         // 票券類型預覽 "售票"
   ticket_type: string;                 // 票券類型 "售票" | "免費" | "報名"
   ticket_price: string;                // 票價（分號分隔）"300;500"
   ticket_url: string;                  // 購票連結
   
   // === 媒體資訊 ===
-  image_url_preview: string;           // 預覽圖 URL
   image_url: string;                   // 完整圖片 URL
   local_image_path: string;            // 本地圖片路徑
   

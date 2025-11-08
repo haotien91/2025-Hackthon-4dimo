@@ -15,7 +15,6 @@ const API_BASE = "http://172.20.10.7:8000";
 type EventItem = {
   event_id?: string | number;
   image_url?: string;
-  image_url_preview?: string;
   title?: string;
   event_url?: string;
   start_datetime_iso?: string;
@@ -25,7 +24,6 @@ type EventItem = {
   event_timezone?: string;
   date_time?: string;
   venue_name?: string;
-  venue_preview?: string;
   event_description?: string;
 };
 
@@ -162,9 +160,9 @@ function TemplateInner() {
     );
   }
 
-  const img = ev.image_url || ev.image_url_preview || "";
+  const img = ev.image_url ?? "";
   const title = ev.title || "未命名活動";
-  const venue = ev.venue_name || ev.venue_preview || "";
+  const venue = ev.venue_name ?? "";
   const dateText = formatDateRangeOnly(ev);
   const link = ev.event_url || "#";
   const desc = (ev.event_description || "").trim();

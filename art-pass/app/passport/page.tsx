@@ -4,12 +4,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { FullBleedCard } from "@/components/passport/fullbleed-card";
 import MorphDialog, { type MorphOrigin } from "@/components/passport/morph-dialog";
 
-const API_BASE = "http://172.20.10.7:8000";
+const API_BASE = "http://142.91.103.69:8000";
 
 type EventItem = {
   event_id?: string | number;
   image_url?: string;
-  image_url_preview?: string;
   title?: string;
   visitDate?: string; // 從 added_at 轉換而來
 };
@@ -80,8 +79,7 @@ async function fetchEventById(eventId: string): Promise<EventItem | null> {
     const data = JSON.parse(text);
     return {
       event_id: data.event_id ?? data.id ?? eventId,
-      image_url: data.image_url ?? data.cover ?? data.image ?? data.image_url_preview ?? "",
-      image_url_preview: data.image_url_preview ?? data.image_url ?? data.cover ?? data.image ?? "",
+      image_url: data.image_url ?? data.cover ?? data.image,
       title: data.title ?? "",
       // extended fields
       category: data.category,
@@ -91,8 +89,7 @@ async function fetchEventById(eventId: string): Promise<EventItem | null> {
       start_timestamp: data.start_timestamp,
       end_timestamp: data.end_timestamp,
       event_timezone: data.event_timezone,
-      venue_name: data.venue_name ?? data.venue ?? data.place ?? data.venue_preview,
-      venue_preview: data.venue_preview ?? data.venue_name ?? data.place,
+      venue_name: data.venue_name ?? data.venue ?? data.place,
       event_description: data.event_description ?? data.description ?? data.summary ?? data.content,
       organizer: data.organizer,
       ticket_type: data.ticket_type,

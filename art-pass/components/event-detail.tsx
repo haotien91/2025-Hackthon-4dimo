@@ -27,7 +27,6 @@ export type EventDetailData = {
 
   // 媒體
   image_url?: string;
-  image_url_preview?: string;
 
   // 時間（optional）
   date_time?: string;
@@ -39,7 +38,6 @@ export type EventDetailData = {
 
   // 地點
   venue_name?: string;
-  venue_preview?: string;
 
   // 詳細
   event_description?: string;
@@ -126,6 +124,10 @@ type Props = {
   showContact?: boolean;
   showVisitButton?: boolean;
   descriptionTextClass?: string; // 調整描述字級（用於特定頁面）
+  // 額外 UI 控制
+  dateOnImage?: boolean; // 活動日期顯示在圖片右下（非 LCD）
+  centerContact?: boolean; // 聯絡資訊置中
+  centerVisitButton?: boolean; // 前往活動頁按鈕置中
 };
 
 export function EventDetail({
@@ -141,11 +143,14 @@ export function EventDetail({
   showContact = true,
   showVisitButton = true,
   descriptionTextClass = "text-sm",
+  dateOnImage = false,
+  centerContact = false,
+  centerVisitButton = true,
 }: Props) {
-  const img = event.image_url || event.image_url_preview || "";
+  const img = event.image_url ?? "";
   const title = event.title || "未命名活動";
   const dateText = formatDateRangeOnly(event);
-  const venue = event.venue_name || event.venue_preview || "";
+  const venue = event.venue_name ?? "";
   const desc = (event.event_description || "").trim();
   const link = event.event_url || "#";
 
@@ -179,41 +184,59 @@ export function EventDetail({
             </div>
           )}
 
+          {/* 右下：活動日期（非 LCD），顯示在圖片上 */}
+          {dateOnImage && dateText && (
+            <div className="absolute bottom-4 right-4">
+              <span className="rounded-md bg-black/55 px-2 py-1 text-xs text-white shadow-sm sm:text-sm">
+                {dateText}
+              </span>
+            </div>
+          )}
+
           {/* 左下：Organizer 灰字 */}
           {showOrganizerOverlay && event.organizer && (
-            <div className="absolute bottom-4 left-4 max-w-[60%] pr-4 text-[13px] text-white/80 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)] line-clamp-2 break-words">
-              {renderOrganizerOverlayText(event.organizer)}
+            <div className="absolute bottom-4 left-4 max-w-[60%] pr-4 text-white/85 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
+              {(event.ticket_type || event.ticket_price) ? (
+                <div className="mt-1 text-[12px] text-white/85">
+                  {event.ticket_type ?? ""}
+                  {event.ticket_type && event.ticket_price ? " · " : ""}
+                  {event.ticket_price ? event.ticket_price.replace(/;/g, " / ") : ""}
+                </div>
+              ) : null}
+              <div className="text-[13px] line-clamp-2 break-words">
+                {renderOrganizerOverlayText(event.organizer)}
+              </div>
             </div>
           )}
         </div>
       )}
 
       <div className="flex-1 overflow-auto">
-        <div className={`${notoSerifTC.className} flex min-h-full flex-col items-start justify-start space-y-4 px-6 py-8 text-left text-black`}>
+        <div className={`${notoSerifTC.className} flex min-h-full flex-col items-center justify-center space-y-4 px-6 py-8 text-left text-black`}>
           {showDescription && desc && (
             <p className={`max-w-2xl break-words whitespace-pre-line leading-relaxed ${descriptionTextClass}`}>{desc}</p>
           )}
 
           {showDate && dateText && <div className="text-sm">{dateText}</div>}
           {showVenue && venue && <div className="text-sm">{venue}</div>}
-          {showOrganizer && event.organizer && <div className="text-sm">主辦：{event.organizer}</div>}
-
-          {showTickets && event.ticket_type && (
+          {showTickets && !showOrganizerOverlay && (event.ticket_type || event.ticket_price) && (
             <div className="text-sm">
-              {event.ticket_type}
-              {event.ticket_price && ` · ${event.ticket_price.replace(/;/g, " / ")}`}
+              {event.ticket_type ?? ""}
+              {event.ticket_type && event.ticket_price ? " · " : ""}
+              {event.ticket_price ? event.ticket_price.replace(/;/g, " / ") : ""}
             </div>
           )}
+          {showOrganizer && event.organizer && <div className="text-sm">主辦：{event.organizer}</div>}
 
           {showContact && (event.contact_person || event.contact_phone) && (
-            <div className="text-sm">
+            <div className={`text-sm ${centerContact ? "w-full text-center" : ""}`}>
               {event.contact_person && `聯絡人：${event.contact_person}`}
               {event.contact_phone && ` ${event.contact_phone}`}
             </div>
           )}
 
           {showVisitButton && link !== "#" && (
-            <div className="mt-2">
+            <div className={`mt-2 ${centerVisitButton ? "w-full flex justify-center"  : ""}`}>
               <a
                 href={link}
                 target="_blank"

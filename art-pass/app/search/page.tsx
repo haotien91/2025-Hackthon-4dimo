@@ -5,10 +5,11 @@ import { useEffect, useRef, useState, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import UidLink from "@/components/uid-link";
+import MorphDialog, { type MorphOrigin, type MorphDialogEvent } from "@/components/passport/morph-dialog";
 
 /* ========= 可調整 ========= */
 const ACCENT = "rgb(90, 180, 197)";
-const API_BASE = "http://172.20.10.7:8000";
+const API_BASE = "http://142.91.103.69:8000";
 const PAGE_SIZE = 10;
 
 /* ========= UI 常數 ========= */
@@ -30,7 +31,6 @@ const DEFAULTS = {
 type EventItem = {
   event_id?: string | number;
   image_url?: string;
-  image_url_preview?: string;
   title?: string;
   detail_page_url?: string;
 
@@ -42,7 +42,6 @@ type EventItem = {
 
   date_time?: string;
   venue_name?: string;
-  venue_preview?: string;
 };
 
 // 取得 event id（兼容多種欄位）
@@ -174,13 +173,15 @@ function EventCard({
   e,
   passportEventIds,
   onPassportChange,
+  onCardClick,
 }: {
   e: EventItem;
   passportEventIds?: Set<string>;
   onPassportChange?: (eventId: string, added: boolean) => void;
+  onCardClick?: (e: EventItem, cardElement: HTMLElement) => void;
 }) {
-  const img = (e.image_url || e.image_url_preview) ?? "";
-  const venue = e.venue_name || e.venue_preview || "";
+  const img = e.image_url ?? "";
+  const venue = e.venue_name ?? "";
   const timeText = formatDateRangeOnly(e);
 
   // ✅ 從各種可能欄位拿 id
@@ -197,8 +198,6 @@ function EventCard({
       setMarked(passportEventIds?.has(eventIdStr) ?? false);
     }
   }, [eventIdStr, passportEventIds]);
-
-  const href = id ? `/template?id=${encodeURIComponent(String(id))}` : undefined;
 
   const CardInner = (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
@@ -301,8 +300,17 @@ function EventCard({
         />
       </button>
 
-      {href ? (
-        <UidLink href={href} className="block">{CardInner}</UidLink>
+      {id ? (
+        <div
+          className="block cursor-pointer"
+          onClick={(ev) => {
+            if (onCardClick) {
+              onCardClick(e, ev.currentTarget);
+            }
+          }}
+        >
+          {CardInner}
+        </div>
       ) : (
         <div className="block cursor-not-allowed opacity-60" title="此活動缺少 ID">{CardInner}</div>
       )}
@@ -340,6 +348,68 @@ function SearchPageInner() {
 
   // Passport 狀態（已標記的 event_id）
   const [passportEventIds, setPassportEventIds] = useState<Set<string>>(new Set());
+
+  // MorphDialog 狀態
+  const [selectedEvent, setSelectedEvent] = useState<MorphDialogEvent | null>(null);
+  const [dialogOrigin, setDialogOrigin] = useState<MorphOrigin | null>(null);
+  const [loadingEvent, setLoadingEvent] = useState(false);
+
+  // Fetch 完整事件詳情
+  async function fetchEventById(eventId: string): Promise<MorphDialogEvent | null> {
+    try {
+      const url = `${API_BASE}/event/${encodeURIComponent(eventId)}`;
+      const res = await fetch(url);
+      const textRaw = await res.text();
+      const text = textRaw.trim().replace(/%+$/, "");
+      const data = JSON.parse(text);
+      return {
+        event_id: data.event_id ?? data.id ?? eventId,
+        image_url: data.image_url ?? data.cover ?? data.image,
+        title: data.title ?? "",
+        category: data.category ?? "",
+        venue_name: data.venue_name ?? data.venue ?? data.place ?? "",
+        date_time: data.date_time ?? "",
+        start_datetime_iso: data.start_datetime_iso ?? data.start_datetime ?? "",
+        end_datetime_iso: data.end_datetime_iso ?? data.end_datetime ?? "",
+        start_timestamp: data.start_timestamp ?? data.start_time,
+        end_timestamp: data.end_timestamp ?? data.end_time,
+        event_timezone: data.event_timezone ?? data.timezone ?? "Asia/Taipei",
+        event_description: data.event_description ?? data.description ?? data.summary ?? data.content ?? "",
+        organizer: data.organizer ?? data.organizer_name ?? "",
+        ticket_type: data.ticket_type ?? "",
+        ticket_price: data.ticket_price ?? "",
+        ticket_url: data.ticket_url ?? "",
+        contact_person: data.contact_person ?? "",
+        contact_phone: data.contact_phone ?? "",
+        event_url: data.event_url ?? data.url ?? "",
+      };
+    } catch (err) {
+      console.error("fetchEventById error:", err);
+      return null;
+    }
+  }
+
+  // 處理卡片點擊
+  const handleCardClick = async (e: EventItem, cardElement: HTMLElement) => {
+    const id = getEventId(e);
+    if (!id) return;
+
+    const rect = cardElement.getBoundingClientRect();
+    setDialogOrigin({
+      x: rect.left + window.scrollX,
+      y: rect.top + window.scrollY,
+      width: rect.width,
+      height: rect.height,
+    });
+
+    setLoadingEvent(true);
+    const fullEvent = await fetchEventById(String(id));
+    setLoadingEvent(false);
+
+    if (fullEvent) {
+      setSelectedEvent(fullEvent);
+    }
+  };
 
   const FIRST_MIN_SPIN_MS = 1200; // 首次載入至少轉 2 秒
   const NEXT_MIN_SPIN_MS  = 800;  // 無限捲動每頁至少轉 0.6 秒（可視覺感受調整）
@@ -598,6 +668,7 @@ function SearchPageInner() {
               key={String(getEventId(e) ?? `${e.detail_page_url ?? "k"}-${i}`)}
               passportEventIds={passportEventIds}
               onPassportChange={handlePassportChange}
+              onCardClick={handleCardClick}
             />
           ))}
 
@@ -614,6 +685,26 @@ function SearchPageInner() {
           )}
         </section>
       </div>
+
+      {/* MorphDialog for event details */}
+      {selectedEvent && dialogOrigin && (
+        <MorphDialog
+          open={!!selectedEvent}
+          event={selectedEvent}
+          origin={dialogOrigin}
+          onClose={() => {
+            setSelectedEvent(null);
+            setDialogOrigin(null);
+          }}
+          maxHeight={800}
+          showAll={true}
+          dateOnImage={true}
+          organizerOverlay={true}
+          organizerInContent={false}
+          centerContact={true}
+          centerVisitButton={true}
+        />
+      )}
 
       {/* 浮動按鈕：開啟篩選 */}
       <button

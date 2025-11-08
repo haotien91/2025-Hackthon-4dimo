@@ -8,7 +8,7 @@ import { Ticket, Map, Search } from "lucide-react";
 
 // ====== 可調整 ======
 const BRAND = "rgb(90, 180, 197)";
-const API_BASE = "http://172.20.10.7:8000"; // 統一走 8000
+const API_BASE = "http://142.91.103.69:8000"; // 統一走 8000
 const HERO_ASPECT = "aspect-[16/8]";
 const AUTOPLAY_MS = 3000;
 const DEFAULT_TZ = "Asia/Taipei";
@@ -82,7 +82,6 @@ async function fetchEvents(url: string): Promise<unknown[]> {
 type EventItem = {
   event_id?: string | number;
   image_url?: string;
-  image_url_preview?: string;
   title?: string;
   detail_page_url?: string;
 
@@ -94,7 +93,6 @@ type EventItem = {
 
   date_time?: string;
   venue_name?: string;
-  venue_preview?: string;
 };
 
 // 取得 event id（兼容多種欄位）
@@ -245,8 +243,8 @@ function Swiper({
 
 // ====== 條列卡片（圖片上、資訊下） → 點擊先到 /template?id=xxx ======
 function EventCard({ e }: { e: EventItem }) {
-  const img = (e.image_url || e.image_url_preview) ?? "";
-  const venue = e.venue_name || e.venue_preview || "";
+  const img = e.image_url ?? "";
+  const venue = e.venue_name ?? "";
   const timeText = formatDateRangeOnly(e);
 
   const id = getEventId(e);
@@ -317,7 +315,7 @@ export default function HomePage() {
   // 輪播 slides：帶 id，點擊進 /template?id=xxx
   const recentSlides = recent
     .map((e) => {
-      const src = e.image_url || e.image_url_preview || "";
+      const src = e.image_url ?? "";
       const id = getEventId(e);
       if (!src) return null;
       return { src, id };

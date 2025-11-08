@@ -12,12 +12,10 @@ export type MorphDialogEvent = {
   event_id?: string | number;
   title?: string;
   image_url?: string;
-  image_url_preview?: string;
   visitDate?: string; // ISO string
   // extended fields used by EventDetail (optional ones allowed)
   category?: string;
   venue_name?: string;
-  venue_preview?: string;
   date_time?: string;
   start_datetime_iso?: string;
   end_datetime_iso?: string;
@@ -39,11 +37,26 @@ export default function MorphDialog({
   event,
   origin,
   onClose,
+  maxHeight = 640,
+  showAll = false,
+  // 顯示覆寫
+  dateOnImage = false,
+  organizerOverlay,
+  organizerInContent,
+  centerContact,
+  centerVisitButton,
 }: {
   open: boolean;
   event: MorphDialogEvent;
   origin: MorphOrigin | null;
   onClose: () => void;
+  maxHeight?: number;
+  showAll?: boolean;
+  dateOnImage?: boolean;
+  organizerOverlay?: boolean;
+  organizerInContent?: boolean;
+  centerContact?: boolean;
+  centerVisitButton?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -64,11 +77,11 @@ export default function MorphDialog({
     const vw = typeof window !== "undefined" ? window.innerWidth : 0;
     const vh = typeof window !== "undefined" ? window.innerHeight : 0;
     const width = Math.min(840, Math.floor(vw * 0.92));
-    const height = Math.min(640, Math.floor(vh * 0.85));
+    const height = Math.min(maxHeight, Math.floor(vh * 0.9));
     const left = Math.max(0, Math.floor((vw - width) / 2));
     const top = Math.max(20, Math.floor((vh - height) / 2));
     return { left, top, width, height };
-  }, []);
+  }, [maxHeight]);
 
   if (!mounted || !open || !origin) return null;
 
@@ -104,14 +117,17 @@ export default function MorphDialog({
           showImage={true}
           imageHeight="h-1/2"
           showDescription={true}
-          showDate={false}
-          showVenue={false}
-          showOrganizer={false}
-          showOrganizerOverlay={true}
-          showTickets={false}
-          showContact={false}
-          showVisitButton={false}
-          descriptionTextClass="text-base md:text-lg"
+          showDate={(showAll ? true : false) && !dateOnImage}
+          showVenue={showAll ? true : false}
+          showOrganizer={organizerInContent ?? (showAll ? true : false)}
+          showOrganizerOverlay={organizerOverlay ?? (showAll ? false : true)}
+          showTickets={showAll ? true : false}
+          showContact={showAll ? true : false}
+          showVisitButton={showAll ? true : false}
+          descriptionTextClass={showAll ? undefined : "text-base md:text-lg"}
+          dateOnImage={dateOnImage}
+          centerContact={!!centerContact}
+          centerVisitButton={!!centerVisitButton}
         />
       </div>
     </div>,
