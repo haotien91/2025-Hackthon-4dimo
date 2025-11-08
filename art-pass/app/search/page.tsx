@@ -1,3 +1,4 @@
+// app/search/page.tsx
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
@@ -26,6 +27,7 @@ const DEFAULTS = {
 
 /* ========= 型別 ========= */
 type EventItem = {
+  event_id?: string | number;
   image_url?: string;
   image_url_preview?: string;
   title?: string;
@@ -153,7 +155,11 @@ function EventCard({ e }: { e: EventItem }) {
   const timeText = formatDateRangeOnly(e);
 
   const [marked, setMarked] = useState(false);
-  
+
+  // ✅ 從各種可能欄位拿 id
+  const id = e.event_id ?? (e as any)?.id ?? (e as any)?.eventId;
+  const href = id ? `/template?id=${encodeURIComponent(String(id))}` : undefined;
+
   const CardInner = (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
       <div className="w-full aspect-[16/9] bg-neutral-200">
@@ -163,9 +169,7 @@ function EventCard({ e }: { e: EventItem }) {
             alt={e.title ?? ""}
             className="h-full w-full object-cover"
             loading="lazy"
-            onError={(ev) => { (
-                ev.currentTarget as HTMLImageElement).style.display = "none"; 
-            }}
+            onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : null}
       </div>
@@ -186,17 +190,10 @@ function EventCard({ e }: { e: EventItem }) {
         aria-label={marked ? "取消標記" : "標記為去過（暫無功能）"}
         aria-pressed={marked}
         title={marked ? "取消標記" : "標記為去過"}
-        onClick={(ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          setMarked((v) => !v);      
-        }}
+        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setMarked((v) => !v); }}
         className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full shadow-md backdrop-blur
                    hover:opacity-95 active:scale-95 transition border border-neutral-200"
-        style={{
-          backgroundColor: "#fff",        
-          color: marked ? ACCENT : "#8E8E8E", 
-        }}
+        style={{ backgroundColor: "#fff", color: marked ? ACCENT : "#8E8E8E" }}
       >
         <span
           className="block h-5 w-5 bg-current
@@ -208,12 +205,10 @@ function EventCard({ e }: { e: EventItem }) {
         />
       </button>
 
-      {e.detail_page_url ? (
-        <Link href={e.detail_page_url} target="_blank" rel="noopener noreferrer" className="block">
-          {CardInner}
-        </Link>
+      {href ? (
+        <Link href={href} className="block">{CardInner}</Link>
       ) : (
-        CardInner
+        <div className="block cursor-not-allowed opacity-60" title="此活動缺少 ID">{CardInner}</div>
       )}
     </div>
   );
@@ -320,11 +315,11 @@ function SearchPageInner() {
       const start = Date.now();
       const data = await fetchSearch(params, ctrl.signal);
 
-        // 最小轉圈 gate：確保 spinner 至少顯示 FIRST_MIN_SPIN_MS
-    const elapsed = Date.now() - start;
-        if (elapsed < FIRST_MIN_SPIN_MS) {
+      // 最小轉圈 gate：確保 spinner 至少顯示 FIRST_MIN_SPIN_MS
+      const elapsed = Date.now() - start;
+      if (elapsed < FIRST_MIN_SPIN_MS) {
         await sleep(FIRST_MIN_SPIN_MS - elapsed);
-    }
+      }
       setItems(data);
       setHasMore(data.length === PAGE_SIZE);
       setOffset(data.length);
@@ -346,13 +341,13 @@ function SearchPageInner() {
       abortRef.current = ctrl;
       const params = buildParams(offset);
       const start = Date.now();
-        const data = await fetchSearch(params, ctrl.signal);
+      const data = await fetchSearch(params, ctrl.signal);
 
-        // 最小轉圈 gate：確保底部 spinner 至少顯示 NEXT_MIN_SPIN_MS
-        const elapsed = Date.now() - start;
-        if (elapsed < NEXT_MIN_SPIN_MS) {
+      // 最小轉圈 gate：確保底部 spinner 至少顯示 NEXT_MIN_SPIN_MS
+      const elapsed = Date.now() - start;
+      if (elapsed < NEXT_MIN_SPIN_MS) {
         await sleep(NEXT_MIN_SPIN_MS - elapsed);
-        }
+      }
       setItems((prev) => [...prev, ...data]);
       setHasMore(data.length === PAGE_SIZE);
       setOffset((prev) => prev + data.length);
@@ -446,7 +441,7 @@ function SearchPageInner() {
                 <button
                   aria-label={`清除 ${c.label}`}
                   onClick={c.remove}
-                  className="rounded-full px-1 leading-none hover:bg-black/5"
+                  className="rounded-full px-1 leading-none hover:bg黑/5"
                   style={{ color: ACCENT }}
                 >
                   ×
@@ -460,10 +455,10 @@ function SearchPageInner() {
         <section className="space-y-4">
           {firstLoad && (
             <div className="py-10 flex items-center justify-center text-neutral-500 text-sm">
-                <Spinner />
-                <span className="ml-2">載入中…</span>
+              <Spinner />
+              <span className="ml-2">載入中…</span>
             </div>
-            )}
+          )}
 
           {!firstLoad && items.length === 0 && (
             <div className="text-sm text-neutral-500">目前沒有資料</div>
@@ -475,12 +470,12 @@ function SearchPageInner() {
 
           {/* 底部載入中 / 沒有更多 */}
           <div ref={sentinelRef} />
-            {loading && !firstLoad && (
+          {loading && !firstLoad && (
             <div className="py-3 flex items-center justify-center text-neutral-500 text-xs">
-                <Spinner />
-                <span className="ml-2">載入中…</span>
+              <Spinner />
+              <span className="ml-2">載入中…</span>
             </div>
-            )}
+          )}
           {!hasMore && items.length > 0 && (
             <div className="py-3 text-center text-xs text-neutral-400">已無更多結果</div>
           )}
@@ -584,7 +579,7 @@ function SearchPageInner() {
             </div>
           </div>
 
-          <div className="sticky bottom-0 w-full bg-white/80 backdrop-blur p-4 border-t border-neutral-200 rounded-b-3xl">
+          <div className="sticky bottom-0 w-full bg白/80 backdrop-blur p-4 border-t border-neutral-200 rounded-b-3xl">
             <div className="flex gap-3">
               <button
                 onClick={resetFilters}

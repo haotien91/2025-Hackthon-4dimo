@@ -1,3 +1,4 @@
+// app/page.tsx
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -78,6 +79,7 @@ async function fetchEvents(url: string): Promise<any[]> {
 }
 
 type EventItem = {
+  event_id?: string | number;
   image_url?: string;
   image_url_preview?: string;
   title?: string;
@@ -94,18 +96,23 @@ type EventItem = {
   venue_preview?: string;
 };
 
-// ====== 輪播（自動播放、左右滑、點圓點、桌機左右點擊區） ======
+// 取得 event id（兼容多種欄位）
+function getEventId(e: Partial<EventItem> & Record<string, any>) {
+  return e.event_id ?? e.id ?? e.eventId;
+}
+
+// ====== 輪播（自動播放、左右滑、點圓點、可點進 template） ======
 function Swiper({
-  images,
+  slides,
   aspectClass = HERO_ASPECT,
   autoMs = AUTOPLAY_MS,
 }: {
-  images: string[];
+  slides: { src: string; id?: string | number }[];
   aspectClass?: string;
   autoMs?: number;
 }) {
   const [idx, setIdx] = useState(0);
-  const n = images.length;
+  const n = slides.length;
 
   const timerRef = useRef<number | null>(null);
   const startX = useRef<number | null>(null);
@@ -162,20 +169,45 @@ function Swiper({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        {images.map((src, i) => (
-          <img
-            key={`${src}-${i}`}
-            src={src}
-            alt=""
-            loading="lazy"
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
-              i === idx ? "opacity-100" : "opacity-0"
-            }`}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
-        ))}
+        {slides.map((s, i) => {
+          const href = s.id != null ? `/template?id=${encodeURIComponent(String(s.id))}` : undefined;
+          return href ? (
+            <Link
+              key={`${s.src}-${i}`}
+              href={href}
+              className={`absolute inset-0 block ${i === idx ? "pointer-events-auto" : "pointer-events-none"}`}
+            >
+              <img
+                src={s.src}
+                alt=""
+                loading="lazy"
+                className={`h-full w-full object-cover transition-opacity duration-500 ${
+                  i === idx ? "opacity-100" : "opacity-0"
+                }`}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </Link>
+          ) : (
+            <span
+              key={`${s.src}-${i}`}
+              className={`absolute inset-0 block ${i === idx ? "pointer-events-auto" : "pointer-events-none"}`}
+            >
+              <img
+                src={s.src}
+                alt=""
+                loading="lazy"
+                className={`h-full w-full object-cover transition-opacity duration-500 ${
+                  i === idx ? "opacity-100" : "opacity-0"
+                }`}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </span>
+          );
+        })}
 
         {n > 1 && (
           <>
@@ -192,7 +224,7 @@ function Swiper({
             />
             {/* 圓點 */}
             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2">
-              {images.map((_, i) => (
+              {slides.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => go(i)}
@@ -210,15 +242,14 @@ function Swiper({
   );
 }
 
-// ====== 條列卡片（圖片上、資訊下） ======
+// ====== 條列卡片（圖片上、資訊下） → 點擊先到 /template?id=xxx ======
 function EventCard({ e }: { e: EventItem }) {
   const img = (e.image_url || e.image_url_preview) ?? "";
   const venue = e.venue_name || e.venue_preview || "";
-
-  // ✅ 預設：日期-only
   const timeText = formatDateRangeOnly(e);
-  // 想用智慧時間就改用：
-  // const timeText = formatSmartRange(e);
+
+  const id = getEventId(e);
+  const href = id != null ? `/template?id=${encodeURIComponent(String(id))}` : undefined;
 
   const body = (
     <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
@@ -244,11 +275,15 @@ function EventCard({ e }: { e: EventItem }) {
     </div>
   );
 
-  return e.detail_page_url ? (
-    <Link href={e.detail_page_url} target="_blank" rel="noopener noreferrer" className="block">
+  return href ? (
+    <Link href={href} className="block">
       {body}
     </Link>
-  ) : body;
+  ) : (
+    <div className="block cursor-not-allowed opacity-60" title="此活動缺少 ID">
+      {body}
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -278,9 +313,15 @@ export default function HomePage() {
     })();
   }, []);
 
-  const recentImgs = recent
-    .map((e) => e.image_url || e.image_url_preview)
-    .filter(Boolean) as string[];
+  // 輪播 slides：帶 id，點擊進 /template?id=xxx
+  const recentSlides = recent
+    .map((e) => {
+      const src = e.image_url || e.image_url_preview || "";
+      const id = getEventId(e);
+      if (!src) return null;
+      return { src, id };
+    })
+    .filter(Boolean) as { src: string; id?: string | number }[];
 
   return (
     <div className="min-h-1 w-full bg-neutral-50">
@@ -294,8 +335,8 @@ export default function HomePage() {
                 className={`w-full ${HERO_ASPECT} animate-pulse bg-gradient-to-br from-indigo-100 to-cyan-100`}
               />
             </div>
-          ) : recentImgs.length > 0 ? (
-            <Swiper images={recentImgs} aspectClass={HERO_ASPECT} />
+          ) : recentSlides.length > 0 ? (
+            <Swiper slides={recentSlides} aspectClass={HERO_ASPECT} />
           ) : (
             <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
               <div
@@ -353,13 +394,14 @@ export default function HomePage() {
           ) : random.length > 0 ? (
             <div className="space-y-4">
               {random.map((e, i) => (
-                <EventCard e={e} key={e.detail_page_url ?? e.title ?? i} />
+                <EventCard e={e} key={(getEventId(e) as any) ?? e.detail_page_url ?? e.title ?? i} />
               ))}
             </div>
           ) : (
             <div className="text-sm text-neutral-500">目前沒有資料</div>
           )}
         </section>
+
         {/* CTA：搜尋更多展演 */}
         <Link
           href={{ pathname: "/search", query: { openFilter: "1" } }}
