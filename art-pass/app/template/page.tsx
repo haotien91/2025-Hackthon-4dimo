@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"; // 只包一層，避免 /template 在 b
 
 const ACCENT = "rgb(90, 180, 197)";
 const DEFAULT_TZ = "Asia/Taipei";
-const API_BASE = "http://172.20.10.7:8000";
+const API_BASE = "http://142.91.103.69:8000";
 
 type EventItem = {
   event_id?: string | number;

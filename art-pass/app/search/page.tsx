@@ -542,25 +542,28 @@ function SearchPageInner() {
 
         {/* 已選擇 chips（簡潔） */}
         {chips.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-1.5">
+        <div className="mb-3 flex flex-wrap gap-1.5">
             {chips.map((c, i) => (
-              <span
+            <span
                 key={`${c.label}-${i}`}
                 className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
                 style={{ borderColor: ACCENT, color: ACCENT }}
-              >
+            >
                 {c.label}
                 <button
-                  aria-label={`清除 ${c.label}`}
-                  onClick={c.remove}
-                  className="rounded-full px-1 leading-none hover:bg黑/5"
-                  style={{ color: ACCENT }}
+                aria-label={`清除 ${c.label}`}
+                onClick={() => {
+                    c.remove();               // 先更新已選條件
+                    setTimeout(loadFirstPage, 0); // 下一個 tick 重新查詢
+                }}
+                className="rounded-full px-1 leading-none hover:bg-black/5"
+                style={{ color: ACCENT }}
                 >
-                  ×
+                ×
                 </button>
-              </span>
+            </span>
             ))}
-          </div>
+        </div>
         )}
 
         {/* 結果列表 */}
@@ -721,7 +724,7 @@ function SearchPageInner() {
             </div>
           </div>
 
-          <div className="sticky bottom-0 w-full bg白/80 backdrop-blur p-4 border-t border-neutral-200 rounded-b-3xl">
+          <div className="sticky bottom-0 w-full bg-white/80 backdrop-blur p-4 border-t border-neutral-200 rounded-b-3xl">
             <div className="flex gap-3">
               <button
                 onClick={resetFilters}
