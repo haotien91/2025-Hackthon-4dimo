@@ -152,7 +152,9 @@ function EventCard({ e }: { e: EventItem }) {
   const venue = e.venue_name || e.venue_preview || "";
   const timeText = formatDateRangeOnly(e);
 
-  const body = (
+  const [marked, setMarked] = useState(false);
+  
+  const CardInner = (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
       <div className="w-full aspect-[16/9] bg-neutral-200">
         {img ? (
@@ -161,7 +163,9 @@ function EventCard({ e }: { e: EventItem }) {
             alt={e.title ?? ""}
             className="h-full w-full object-cover"
             loading="lazy"
-            onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none"; }}
+            onError={(ev) => { (
+                ev.currentTarget as HTMLImageElement).style.display = "none"; 
+            }}
           />
         ) : null}
       </div>
@@ -175,11 +179,44 @@ function EventCard({ e }: { e: EventItem }) {
     </div>
   );
 
-  return e.detail_page_url ? (
-    <Link href={e.detail_page_url} target="_blank" rel="noopener noreferrer" className="block">
-      {body}
-    </Link>
-  ) : body;
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-label={marked ? "取消標記" : "標記為去過（暫無功能）"}
+        aria-pressed={marked}
+        title={marked ? "取消標記" : "標記為去過"}
+        onClick={(ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          setMarked((v) => !v);      
+        }}
+        className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full shadow-md backdrop-blur
+                   hover:opacity-95 active:scale-95 transition border border-neutral-200"
+        style={{
+          backgroundColor: "#fff",        
+          color: marked ? ACCENT : "#8E8E8E", 
+        }}
+      >
+        <span
+          className="block h-5 w-5 bg-current
+                     [mask-image:url('/footprint.png')]
+                     [mask-repeat:no-repeat]
+                     [mask-position:center]
+                     [mask-size:contain]"
+          aria-hidden="true"
+        />
+      </button>
+
+      {e.detail_page_url ? (
+        <Link href={e.detail_page_url} target="_blank" rel="noopener noreferrer" className="block">
+          {CardInner}
+        </Link>
+      ) : (
+        CardInner
+      )}
+    </div>
+  );
 }
 
 /* ========= 頁面 ========= */

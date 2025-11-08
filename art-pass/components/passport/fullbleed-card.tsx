@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import localFont from "next/font/local";
+// import localFont from "next/font/local";
 
 type Props = {
   title: string;
@@ -9,10 +9,11 @@ type Props = {
   onClick?: () => void;
 };
 
-const dseg = localFont({
-  src: "../../node_modules/dseg/fonts/DSEG7-Modern/DSEG7Modern-Regular.ttf",
-  display: "swap",
-});
+// const dseg = localFont({
+//   src: "../../node_modules/dseg/fonts/DSEG7-Modern/DSEG7Modern-Regular.ttf",
+//   display: "swap",
+// });
+const lcdClass = "font-mono tabular-nums tracking-[0.18em]";
 
 export function FullBleedCard({ title, imageUrl, bottomRightText, onClick }: Props) {
   return (
@@ -29,7 +30,7 @@ export function FullBleedCard({ title, imageUrl, bottomRightText, onClick }: Pro
 
       {/* 右下 LCD 字樣（可選，採用 DSEG 七段顯示字體） */}
       {bottomRightText ? (
-        <div className={`absolute bottom-4 right-4 ${dseg.className}`}>
+        <div className={`absolute bottom-4 right-4 ${lcdClass}`}>
           <span
             className="px-0 py-0 text-sm leading-none tracking-[0.18em] text-[#efbf5d] sm:text-base md:text-lg"
             style={{
