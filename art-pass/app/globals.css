@@ -3,11 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Primary: rgba(255, 90, 180, 197/255) */
+  --primary-r: 255;
+  --primary-g: 90;
+  --primary-b: 180;
+  --primary-a: 0.7725;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: rgb(var(--primary-r) var(--primary-g) var(--primary-b));
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

@@ -36,11 +36,11 @@ extension MyServiceIdExt on MyServiceItemId {
   MyServiceItem get item {
     return switch (this) {
       MyServiceItemId.dedicatedLine => MyServiceItem(
-          title: 'Google',
-          description: '使用Google搜尋',
+          title: 'ChatGPT',
+          description: '使用ChatGPT搜尋',
           icon: Assets.svg.icon1999phoneS.svg(),
           category: MyServiceCategory.cityService,
-          destinationUrl: 'https://watchapp.ncdr.nat.gov.tw/',
+          destinationUrl: 'https://chatgpt.com/',
         ),
 
       MyServiceItemId.dedicatedLine => MyServiceItem(
