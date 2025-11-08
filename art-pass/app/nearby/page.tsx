@@ -14,44 +14,14 @@ const MUSEUMS = [
   { name: "國立故宮博物院", lat: 25.1024, lng: 121.5485 },
 ];
 
-// 免費底圖清單（無金鑰）
-const BASEMAPS: Record<
-  string,
-  { url: string; options: Record<string, any> }
-> = {
-  標準: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    options: {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-    },
-  },
-  亮色: {
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    options: {
-      maxZoom: 20,
-      subdomains: "abcd",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>',
-    },
-  },
-  暗色: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    options: {
-      maxZoom: 20,
-      subdomains: "abcd",
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>',
-    },
-  },
-  人道風: {
-    url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
-    options: {
-      maxZoom: 19,
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noreferrer">HOT</a>',
-    },
+// 免費底圖（預設用亮色）
+const DEFAULT_BASEMAP = {
+  url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+  options: {
+    maxZoom: 20,
+    subdomains: "abcd",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>',
   },
 };
 
@@ -69,13 +39,11 @@ function ensureLeafletCss() {
 export default function NearbyPage() {
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);            // Leaflet.Map
-  const tileRef = useRef<any>(null);           // 目前底圖 layer
   const userMarkerRef = useRef<any>(null);     // Leaflet.Marker
   const userCircleRef = useRef<any>(null);     // Leaflet.Circle
   const watchIdRef = useRef<number | null>(null);
 
   const [hasGeo, setHasGeo] = useState(false);
-  const [styleName, setStyleName] = useState<keyof typeof BASEMAPS>("亮色");
 
   // 初始化地圖
   useEffect(() => {
@@ -107,14 +75,20 @@ export default function NearbyPage() {
       });
       mapRef.current = map;
 
-      // 加入預設底圖
-      const bm = BASEMAPS[styleName];
-      tileRef.current = L.tileLayer(bm.url, bm.options).addTo(map);
+      // 加入預設底圖（亮色）
+      L.tileLayer(DEFAULT_BASEMAP.url, DEFAULT_BASEMAP.options).addTo(map);
 
-      // 三個美術館點
-      MUSEUMS.forEach((p) => {
-        L.marker([p.lat, p.lng]).addTo(map).bindPopup(`<b>${p.name}</b>`);
-      });
+    // 三個美術館點
+    MUSEUMS.forEach((p) => {
+        L.circleMarker([p.lat, p.lng], {
+            radius: 7,
+            stroke: false,          // ⬅️ 不要外框
+            fillColor: "#facc15",   // 黃色
+            fillOpacity: 1,
+        })
+            .addTo(map)
+            .bindPopup(`<b>${p.name}</b>`);
+    });
 
       // 初次強制重算尺寸
       requestAnimationFrame(() => map.invalidateSize());
@@ -138,7 +112,15 @@ export default function NearbyPage() {
         if (!mapRef.current) return;
         const map = mapRef.current!;
         if (!userMarkerRef.current) {
-          userMarkerRef.current = L.marker([lat, lng], { title: "你的位置" }).addTo(map);
+          userMarkerRef.current = L.circleMarker([lat, lng], {
+            radius: 7,
+            stroke: false,      // ⬅️ 不要外框
+            fillColor: ACCENT,  // 你的品牌藍
+            fillOpacity: 1,
+            })
+            .addTo(map)
+            .bindTooltip("你的位置", { permanent: false, direction: "top" 
+        });
           userCircleRef.current = L.circle([lat, lng], {
             radius: 60,
             color: ACCENT,
@@ -167,22 +149,6 @@ export default function NearbyPage() {
       }
     };
   }, []);
-
-  // 切換底圖
-  useEffect(() => {
-    (async () => {
-      if (!mapRef.current) return;
-      const { default: L } = await import("leaflet");
-      // 先移除舊底圖
-      if (tileRef.current) {
-        mapRef.current.removeLayer(tileRef.current);
-        tileRef.current = null;
-      }
-      // 加入新底圖
-      const bm = BASEMAPS[styleName];
-      tileRef.current = L.tileLayer(bm.url, bm.options).addTo(mapRef.current);
-    })();
-  }, [styleName]);
 
   const locateMe = () => {
     if (!navigator.geolocation || !mapRef.current) return;
@@ -229,28 +195,6 @@ export default function NearbyPage() {
         >
           📍
         </button>
-
-        {/* 右上角：底圖切換（你的風格） */}
-        <div className="absolute top-4 right-4 z-50 rounded-xl border border-neutral-200 bg-white/90 shadow-sm backdrop-blur px-2 py-1 flex gap-1">
-          {Object.keys(BASEMAPS).map((k) => {
-            const active = k === styleName;
-            return (
-              <button
-                key={k}
-                onClick={() => setStyleName(k as keyof typeof BASEMAPS)}
-                className="px-2.5 py-1 text-xs rounded-lg border transition active:scale-95"
-                style={
-                  active
-                    ? { backgroundColor: ACCENT, borderColor: ACCENT, color: "#fff" }
-                    : { backgroundColor: "#fff", borderColor: "#e5e7eb", color: "#374151" }
-                }
-                aria-pressed={active}
-              >
-                {k}
-              </button>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
