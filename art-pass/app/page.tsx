@@ -8,7 +8,7 @@ import { Ticket, Map, Search } from "lucide-react";
 
 // ====== 可調整 ======
 const BRAND = "rgb(90, 180, 197)";
-const API_BASE = "http://172.20.10.7:8000"; // 統一走 8000
+const API_BASE = "http://142.91.103.69:8000"; // 統一走 8000
 const HERO_ASPECT = "aspect-[16/8]";
 const AUTOPLAY_MS = 3000;
 const DEFAULT_TZ = "Asia/Taipei";
