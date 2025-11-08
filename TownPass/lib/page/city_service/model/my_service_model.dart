@@ -9,7 +9,7 @@ import 'package:town_pass/gen/assets.gen.dart';
 // First, add new service within the MyServiceItemId enum;
 // Then add MyServiceItem within MyServiceIdExt extension.
 
-const String ART_PACE_URL = 'https://art-pass.vercel.app/';
+const String ART_PACE_URL = 'https://art-pass-seven.vercel.app/';
 
 enum MyServiceItemId {
   dedicatedLine,
