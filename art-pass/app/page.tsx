@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 // import Link from "next/link";
 import UidLink from "@/components/uid-link";
 import { Ticket, Map, Search } from "lucide-react";
+import MorphDialog, { type MorphOrigin, type MorphDialogEvent } from "@/components/passport/morph-dialog";
 
 // ====== 可調整 ======
 const BRAND = "rgb(90, 180, 197)";
@@ -105,10 +106,12 @@ function Swiper({
   slides,
   aspectClass = HERO_ASPECT,
   autoMs = AUTOPLAY_MS,
+  onSlideClick,
 }: {
   slides: { src: string; id?: string | number }[];
   aspectClass?: string;
   autoMs?: number;
+  onSlideClick?: (id: string, el: HTMLElement) => void;
 }) {
   const [idx, setIdx] = useState(0);
   const n = slides.length;
@@ -168,45 +171,24 @@ function Swiper({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
       >
-        {slides.map((s, i) => {
-          const href = s.id != null ? `/template?id=${encodeURIComponent(String(s.id))}` : undefined;
-          return href ? (
-            <UidLink
-              key={`${s.src}-${i}`}
-              href={href}
-              className={`absolute inset-0 block ${i === idx ? "pointer-events-auto" : "pointer-events-none"}`}
-            >
-              <img
-                src={s.src}
-                alt=""
-                loading="lazy"
-                className={`h-full w-full object-cover transition-opacity duration-500 ${
-                  i === idx ? "opacity-100" : "opacity-0"
-                }`}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </UidLink>
-          ) : (
-            <span
-              key={`${s.src}-${i}`}
-              className={`absolute inset-0 block ${i === idx ? "pointer-events-auto" : "pointer-events-none"}`}
-            >
-              <img
-                src={s.src}
-                alt=""
-                loading="lazy"
-                className={`h-full w-full object-cover transition-opacity duration-500 ${
-                  i === idx ? "opacity-100" : "opacity-0"
-                }`}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </span>
-          );
-        })}
+        {slides.map((s, i) => (
+          <span
+            key={`${s.src}-${i}`}
+            className={`absolute inset-0 block ${i === idx ? "pointer-events-auto" : "pointer-events-none"}`}
+            onClick={s.id != null && onSlideClick ? (ev) => onSlideClick(String(s.id!), ev.currentTarget as HTMLElement) : undefined}
+            role={s.id != null && onSlideClick ? "button" : undefined}
+          >
+            <img
+              src={s.src}
+              alt=""
+              loading="lazy"
+              className={`h-full w-full object-cover transition-opacity duration-500 ${i === idx ? "opacity-100" : "opacity-0"}`}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </span>
+        ))}
 
         {n > 1 && (
           <>
@@ -242,13 +224,16 @@ function Swiper({
 }
 
 // ====== 條列卡片（圖片上、資訊下） → 點擊先到 /template?id=xxx ======
-function EventCard({ e }: { e: EventItem }) {
+function EventCard({
+  e,
+  onCardClick,
+}: {
+  e: EventItem;
+  onCardClick?: (e: EventItem, el: HTMLElement) => void;
+}) {
   const img = e.image_url ?? "";
   const venue = e.venue_name ?? "";
   const timeText = formatDateRangeOnly(e);
-
-  const id = getEventId(e);
-  const href = id != null ? `/template?id=${encodeURIComponent(String(id))}` : undefined;
 
   const body = (
     <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
@@ -274,12 +259,11 @@ function EventCard({ e }: { e: EventItem }) {
     </div>
   );
 
-  return href ? (
-    <UidLink href={href} className="block">
-      {body}
-    </UidLink>
-  ) : (
-    <div className="block cursor-not-allowed opacity-60" title="此活動缺少 ID">
+  return (
+    <div
+      className="block cursor-pointer"
+      onClick={(ev) => onCardClick?.(e, ev.currentTarget as HTMLElement)}
+    >
       {body}
     </div>
   );
@@ -290,6 +274,10 @@ export default function HomePage() {
   const [random, setRandom] = useState<EventItem[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [loadingRandom, setLoadingRandom] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<MorphDialogEvent | null>(null);
+  const [dialogOrigin, setDialogOrigin] = useState<MorphOrigin | null>(null);
+  const [passportEventIds, setPassportEventIds] = useState<Set<string>>(new Set());
+  const uid = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("uid") || "" : "";
 
   // ====== 抓 /hot（上方：輪播） ======
   useEffect(() => {
@@ -312,6 +300,85 @@ export default function HomePage() {
     })();
   }, []);
 
+  // 護照初始載入
+  useEffect(() => {
+    (async () => {
+      if (!uid) return;
+      try {
+        const url = `${API_BASE}/users/${encodeURIComponent(uid)}/passport`;
+        const res = await fetch(url);
+        const text = await res.text();
+        const cleaned = text.trim().replace(/%+$/, "");
+        const list = JSON.parse(cleaned) as Array<{ event_id: string | number }>;
+        const s = new Set<string>();
+        for (const it of list) {
+          if (it?.event_id != null) s.add(String(it.event_id));
+        }
+        setPassportEventIds(s);
+      } catch (e) {
+        console.warn("fetch passport error:", e);
+      }
+    })();
+  }, [uid]);
+
+  const handlePassportChange = (eventId: string, added: boolean) => {
+    setPassportEventIds((prev) => {
+      const next = new Set(prev);
+      if (added) next.add(eventId);
+      else next.delete(eventId);
+      return next;
+    });
+  };
+
+  async function fetchEventById(eventId: string): Promise<MorphDialogEvent | null> {
+    try {
+      const url = `${API_BASE}/event/${encodeURIComponent(eventId)}`;
+      const res = await fetch(url);
+      const text = await res.text();
+      const cleaned = text.trim().replace(/%+$/, "");
+      const data = JSON.parse(cleaned);
+      return {
+        event_id: data.event_id ?? data.id ?? eventId,
+        image_url: data.image_url ?? data.cover ?? data.image ?? data.image_url_preview ?? "",
+        title: data.title ?? "",
+        category: data.category ?? "",
+        venue_name: data.venue_name ?? data.venue ?? data.place ?? "",
+        date_time: data.date_time ?? "",
+        start_datetime_iso: data.start_datetime_iso ?? data.start_datetime ?? "",
+        end_datetime_iso: data.end_datetime_iso ?? data.end_datetime ?? "",
+        start_timestamp: data.start_timestamp ?? data.start_time,
+        end_timestamp: data.end_timestamp ?? data.end_time,
+        event_timezone: data.event_timezone ?? data.timezone ?? "Asia/Taipei",
+        event_description: data.event_description ?? data.description ?? data.summary ?? data.content ?? "",
+        organizer: data.organizer ?? data.organizer_name ?? "",
+        ticket_type: data.ticket_type ?? "",
+        ticket_price: data.ticket_price ?? "",
+        ticket_url: data.ticket_url ?? "",
+        contact_person: data.contact_person ?? "",
+        contact_phone: data.contact_phone ?? "",
+        event_url: data.event_url ?? data.url ?? "",
+      };
+    } catch (err) {
+      console.error("fetchEventById error:", err);
+      return null;
+    }
+  }
+
+  const handleCardClick = async (e: EventItem, el: HTMLElement) => {
+    const id = getEventId(e);
+    if (!id) return;
+    const rect = el.getBoundingClientRect();
+    setDialogOrigin({ x: rect.left + window.scrollX, y: rect.top + window.scrollY, width: rect.width, height: rect.height });
+    const full = await fetchEventById(String(id));
+    if (full) setSelectedEvent(full);
+  };
+
+  const handleSlideClick = async (idStr: string, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect();
+    setDialogOrigin({ x: rect.left + window.scrollX, y: rect.top + window.scrollY, width: rect.width, height: rect.height });
+    const full = await fetchEventById(String(idStr));
+    if (full) setSelectedEvent(full);
+  };
   // 輪播 slides：帶 id，點擊進 /template?id=xxx
   const recentSlides = recent
     .map((e) => {
@@ -335,7 +402,7 @@ export default function HomePage() {
               />
             </div>
           ) : recentSlides.length > 0 ? (
-            <Swiper slides={recentSlides} aspectClass={HERO_ASPECT} />
+            <Swiper slides={recentSlides} aspectClass={HERO_ASPECT} onSlideClick={handleSlideClick} />
           ) : (
             <div className="overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-sm">
               <div
@@ -396,6 +463,7 @@ export default function HomePage() {
                 <EventCard
                   e={e}
                   key={String(getEventId(e) ?? e.detail_page_url ?? e.title ?? i)}
+                  onCardClick={handleCardClick}
                 />
               ))}
             </div>
@@ -412,6 +480,28 @@ export default function HomePage() {
           沒看到想看的嗎？搜尋更多展演
         </UidLink>
       </div>
+      {selectedEvent && dialogOrigin && (
+        <MorphDialog
+          open={!!selectedEvent}
+          event={selectedEvent}
+          origin={dialogOrigin}
+          onClose={() => {
+            setSelectedEvent(null);
+            setDialogOrigin(null);
+          }}
+          maxHeight={900}
+          showAll={true}
+          dateOnImage={true}
+          organizerOverlay={true}
+          organizerInContent={false}
+          centerContact={true}
+          centerVisitButton={true}
+          enableFootprint={true}
+          apiBase={API_BASE}
+          isInPassport={!!(selectedEvent?.event_id && passportEventIds.has(String(selectedEvent.event_id)))}
+          onPassportChange={handlePassportChange}
+        />
+      )}
     </div>
   );
 }

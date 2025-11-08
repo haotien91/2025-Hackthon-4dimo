@@ -189,16 +189,6 @@ function EventCard({
   const eventIdStr = id ? String(id) : null;
   const isInPassport = eventIdStr ? passportEventIds?.has(eventIdStr) ?? false : false;
 
-  const [marked, setMarked] = useState(isInPassport);
-  const [posting, setPosting] = useState(false);
-
-  // 當 passportEventIds 改變時，同步更新 marked 狀態
-  useEffect(() => {
-    if (eventIdStr) {
-      setMarked(passportEventIds?.has(eventIdStr) ?? false);
-    }
-  }, [eventIdStr, passportEventIds]);
-
   const CardInner = (
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
       <div className="w-full aspect-[16/9] bg-neutral-200">
@@ -224,82 +214,6 @@ function EventCard({
 
   return (
     <div className="relative">
-      <button
-        type="button"
-        aria-label={marked ? "取消標記" : "標記為去過（暫無功能）"}
-        aria-pressed={marked}
-        title={marked ? "取消標記" : "標記為去過"}
-        onClick={async (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          if (!id || posting) return;
-          try {
-            setPosting(true);
-            // 從網址取得 uid
-            const uid =
-              typeof window !== "undefined"
-                ? new URLSearchParams(window.location.search).get("uid") || ""
-                : "";
-            if (!uid) {
-              console.warn("Missing uid in URL; skip passport POST");
-              return;
-            }
-            const eventId = String(id);
-
-            if (!marked) {
-              // 新增到 passport（POST）
-              const url = `${API_BASE}/users/${encodeURIComponent(uid)}/passport?event_id=${encodeURIComponent(
-                eventId
-              )}`;
-              console.log("[passport] POST", url);
-              const res = await fetch(url, { method: "POST" });
-              const text = await res.text();
-              const cleaned = text.trim().replace(/%+$/, "");
-              const json = JSON.parse(cleaned) as { added?: boolean; message?: string };
-              const success = typeof json.added === "boolean" ? json.added : true;
-              setMarked(success);
-              if (success && onPassportChange) {
-                onPassportChange(eventId, true);
-              }
-              if (json?.message) console.log("[passport]", json.message);
-              return;
-            }
-
-            // 取消（DELETE）
-            const delUrl = `${API_BASE}/users/${encodeURIComponent(uid)}/passport/${encodeURIComponent(
-              eventId
-            )}`;
-            console.log("[passport] DELETE", delUrl);
-            const res = await fetch(delUrl, { method: "DELETE" });
-            const text = await res.text();
-            const cleaned = text.trim().replace(/%+$/, "");
-            const json = JSON.parse(cleaned) as { removed?: boolean; message?: string };
-            const success = typeof json.removed === "boolean" ? json.removed : true;
-            setMarked(!success);
-            if (success && onPassportChange) {
-              onPassportChange(eventId, false);
-            }
-            if (json?.message) console.log("[passport]", json.message);
-          } catch (err) {
-            console.error("passport POST error:", err);
-          } finally {
-            setPosting(false);
-          }
-        }}
-        className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full shadow-md backdrop-blur
-                   hover:opacity-95 active:scale-95 transition border border-neutral-200"
-        style={{ backgroundColor: "#fff", color: marked ? ACCENT : "#8E8E8E" }}
-      >
-        <span
-          className="block h-5 w-5 bg-current
-                     [mask-image:url('/footprint.png')]
-                     [mask-repeat:no-repeat]
-                     [mask-position:center]
-                     [mask-size:contain]"
-          aria-hidden="true"
-        />
-      </button>
-
       {id ? (
         <div
           className="block cursor-pointer"
@@ -703,6 +617,10 @@ function SearchPageInner() {
           organizerInContent={false}
           centerContact={true}
           centerVisitButton={true}
+          enableFootprint={true}
+          apiBase={API_BASE}
+          isInPassport={!!(selectedEvent?.event_id && passportEventIds.has(String(selectedEvent.event_id)))}
+          onPassportChange={handlePassportChange}
         />
       )}
 

@@ -45,6 +45,11 @@ export default function MorphDialog({
   organizerInContent,
   centerContact,
   centerVisitButton,
+  // footprint
+  enableFootprint = false,
+  apiBase,
+  isInPassport,
+  onPassportChange,
 }: {
   open: boolean;
   event: MorphDialogEvent;
@@ -57,6 +62,10 @@ export default function MorphDialog({
   organizerInContent?: boolean;
   centerContact?: boolean;
   centerVisitButton?: boolean;
+  enableFootprint?: boolean;
+  apiBase?: string;
+  isInPassport?: boolean;
+  onPassportChange?: (eventId: string, added: boolean) => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -85,7 +94,11 @@ export default function MorphDialog({
 
   if (!mounted || !open || !origin) return null;
 
-  return createPortal(
+  console.log("isInPassport", isInPassport);
+
+  console.log("event.event_id", event.event_id);
+
+  return createPortal(    
     <div className="fixed inset-0 z-50">
       {/* 背景遮罩 */}
       <div
@@ -128,6 +141,10 @@ export default function MorphDialog({
           dateOnImage={dateOnImage}
           centerContact={!!centerContact}
           centerVisitButton={!!centerVisitButton}
+          showFootprint={!!enableFootprint}
+          apiBase={apiBase}
+          isInPassport={!!isInPassport}
+          onPassportChange={onPassportChange}
         />
       </div>
     </div>,

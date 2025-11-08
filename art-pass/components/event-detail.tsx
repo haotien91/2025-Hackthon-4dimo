@@ -4,6 +4,7 @@ import Image from "next/image";
 import localFont from "next/font/local";
 import { Noto_Serif_TC } from "next/font/google";
 import UidLink from "@/components/uid-link";
+import { useEffect, useState } from "react";
 
 const dseg = localFont({
   src: "../node_modules/dseg/fonts/DSEG7-Modern/DSEG7Modern-Regular.ttf",
@@ -128,6 +129,11 @@ type Props = {
   dateOnImage?: boolean; // 活動日期顯示在圖片右下（非 LCD）
   centerContact?: boolean; // 聯絡資訊置中
   centerVisitButton?: boolean; // 前往活動頁按鈕置中
+  // 護照 footprint 控制
+  showFootprint?: boolean;
+  apiBase?: string;
+  isInPassport?: boolean;
+  onPassportChange?: (eventId: string, added: boolean) => void;
 };
 
 export function EventDetail({
@@ -146,6 +152,10 @@ export function EventDetail({
   dateOnImage = false,
   centerContact = false,
   centerVisitButton = true,
+  showFootprint = false,
+  apiBase,
+  isInPassport = false,
+  onPassportChange,
 }: Props) {
   const img = event.image_url ?? "";
   const title = event.title || "未命名活動";
@@ -153,6 +163,57 @@ export function EventDetail({
   const venue = event.venue_name ?? "";
   const desc = (event.event_description || "").trim();
   const link = event.event_url || "#";
+
+  const [marked, setMarked] = useState<boolean>(isInPassport);
+  const [posting, setPosting] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMarked(isInPassport);
+  }, [isInPassport]);
+
+  async function togglePassport() {
+    if (posting) return;
+    const id = event.event_id != null ? String(event.event_id) : null;
+    if (!id) return;
+    const uid =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("uid") || ""
+        : "";
+    if (!uid) {
+      console.warn("Missing uid in URL; skip passport POST/DELETE");
+      return;
+    }
+    if (!apiBase) {
+      console.warn("Missing apiBase prop for EventDetail; skip passport POST/DELETE");
+      return;
+    }
+    try {
+      setPosting(true);
+      if (!marked) {
+        const postUrl = `${apiBase}/users/${encodeURIComponent(uid)}/passport?event_id=${encodeURIComponent(id)}`;
+        const res = await fetch(postUrl, { method: "POST" });
+        const text = await res.text();
+        const cleaned = text.trim().replace(/%+$/, "");
+        const json = JSON.parse(cleaned) as { added?: boolean };
+        const success = typeof json.added === "boolean" ? json.added : true;
+        setMarked(success);
+        if (success) onPassportChange?.(id, true);
+      } else {
+        const delUrl = `${apiBase}/users/${encodeURIComponent(uid)}/passport/${encodeURIComponent(id)}`;
+        const res = await fetch(delUrl, { method: "DELETE" });
+        const text = await res.text();
+        const cleaned = text.trim().replace(/%+$/, "");
+        const json = JSON.parse(cleaned) as { removed?: boolean };
+        const success = typeof json.removed === "boolean" ? json.removed : true;
+        setMarked(!success);
+        if (success) onPassportChange?.(id, false);
+      }
+    } catch (err) {
+      console.error("passport toggle error:", err);
+    } finally {
+      setPosting(false);
+    }
+  }
 
   return (
     <div className="flex h-full flex-col bg-white">
@@ -164,9 +225,31 @@ export function EventDetail({
           <div className="absolute inset-0 bg-black/20" />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
 
-          <div className="absolute left-4 top-4 pr-6 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
-            <h3 className="text-xl font-bold leading-tight sm:text-2xl md:text-3xl">{title}</h3>
+          <div className="absolute left-4 top-6 pr-6 text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
+            <h3 className="text-xl font-bold leading-tight sm:text-2xl md:text-3xl max-w-2xs">{title}</h3>
           </div>
+
+          {/* 右上：footprint */}
+          {showFootprint && (
+            <button
+              type="button"
+              aria-label={marked ? "取消標記" : "標記為去過"}
+              aria-pressed={marked}
+              title={marked ? "取消標記" : "標記為去過"}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePassport();
+              }}
+              disabled={posting}
+              className="absolute right-4 top-7 z-10 grid h-9 w-9 place-items-center rounded-full shadow-md backdrop-blur hover:opacity-95 active:scale-95 transition border border-neutral-200"
+              style={{ backgroundColor: "#fff", color: marked ? ACCENT : "#8E8E8E", opacity: posting ? 0.6 : 1 }}
+            >
+              <span
+                className="block h-5 w-5 bg-current [mask-image:url('/footprint.png')] [mask-repeat:no-repeat] [mask-position:center] [mask-size:contain]"
+                aria-hidden="true"
+              />
+            </button>
+          )}
 
           {/* 右下：登記日期（LCD） */}
           {event.visitDate && (
