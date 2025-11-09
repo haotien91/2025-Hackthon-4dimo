@@ -583,7 +583,7 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
           ) : (
             <button
               onClick={moveRight}
-              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-white select-none leading-none"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-white select-none leading-none z-30"
               aria-label="下一個地點"
               title="下一個地點"
               style={{ textShadow: "0 1px 2px rgba(0,0,0,.6)" }}
