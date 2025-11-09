@@ -9,7 +9,7 @@ import MorphDialog, { type MorphOrigin, type MorphDialogEvent } from "@/componen
 
 /* ========= 可調整 ========= */
 const ACCENT = "rgb(90, 180, 197)";
-const API_BASE = "http://142.91.103.69:8000";
+const API_BASE = "https://4dimo.020908.xyz:8443";
 const PAGE_SIZE = 10;
 
 /* ========= UI 常數 ========= */

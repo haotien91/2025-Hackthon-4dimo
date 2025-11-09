@@ -9,7 +9,7 @@ import MorphDialog, { type MorphOrigin, type MorphDialogEvent } from "@/componen
 
 // ====== 可調整 ======
 const BRAND = "rgb(90, 180, 197)";
-const API_BASE = "http://142.91.103.69:8000"; // 統一走 8000
+const API_BASE = "https://4dimo.020908.xyz:8443"; // 統一走 8000
 const HERO_ASPECT = "aspect-[16/8]";
 const AUTOPLAY_MS = 3000;
 const DEFAULT_TZ = "Asia/Taipei";
@@ -309,10 +309,19 @@ export default function HomePage() {
         const res = await fetch(url);
         const text = await res.text();
         const cleaned = text.trim().replace(/%+$/, "");
-        const list = JSON.parse(cleaned) as Array<{ event_id: string | number }>;
+        const json = JSON.parse(cleaned);
         const s = new Set<string>();
-        for (const it of list) {
-          if (it?.event_id != null) s.add(String(it.event_id));
+        if (Array.isArray(json)) {
+          // 兼容：直接回傳陣列（可能是字串 event_id 或物件）
+          for (const it of json) {
+            if (typeof it === "string") s.add(it);
+            else if (it && typeof it === "object" && (it as any).event_id != null) s.add(String((it as any).event_id));
+          }
+        } else if (json && typeof json === "object" && Array.isArray(json.passport)) {
+          // 物件形式：{ passport: [{ event_id, added_at }], ... }
+          for (const it of json.passport) {
+            if (it?.event_id != null) s.add(String(it.event_id));
+          }
         }
         setPassportEventIds(s);
       } catch (e) {

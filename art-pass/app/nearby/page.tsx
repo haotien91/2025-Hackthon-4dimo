@@ -25,7 +25,7 @@ const DEFAULT_BASEMAP = {
   },
 };
 
-const API_BASE = "http://142.91.103.69:8000";
+const API_BASE = "https://4dimo.020908.xyz:8443";
 const VENUE_API = `${API_BASE}/venue`;
 const platformApiUrl = (platformName: string) => {
   const now = Math.floor(Date.now() / 1000);

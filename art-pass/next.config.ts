@@ -13,8 +13,8 @@ const nextConfig: NextConfig = {
         hostname: "cultureexpress.taipei",
       },
       {
-        protocol: "http",
-        hostname: "142.91.103.69",
+        protocol: "https",
+        hostname: "4dimo.020908.xyz:8443",
       },
     ],
   },
