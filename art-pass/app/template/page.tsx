@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"; // 只包一層，避免 /template 在 b
 
 const ACCENT = "rgb(90, 180, 197)";
 const DEFAULT_TZ = "Asia/Taipei";
-const API_BASE = "https://4dimo.020908.xyz:8443";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://4dimo.020908.xyz:8443";
 
 type EventItem = {
   event_id?: string | number;

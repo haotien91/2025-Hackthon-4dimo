@@ -9,7 +9,7 @@ import MorphDialog, { type MorphOrigin, type MorphDialogEvent } from "@/componen
 
 // ====== 可調整 ======
 const BRAND = "rgb(90, 180, 197)";
-const API_BASE = "https://4dimo.020908.xyz:8443"; // 統一走 8000
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://4dimo.020908.xyz:8443";
 const HERO_ASPECT = "aspect-[16/8]";
 const AUTOPLAY_MS = 3000;
 const DEFAULT_TZ = "Asia/Taipei";

@@ -9,17 +9,17 @@ import MorphDialog, { type MorphOrigin, type MorphDialogEvent } from "@/componen
 
 /* ========= 可調整 ========= */
 const ACCENT = "rgb(90, 180, 197)";
-const API_BASE = "https://4dimo.020908.xyz:8443";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://4dimo.020908.xyz:8443";
 const PAGE_SIZE = 10;
 
 /* ========= UI 常數 ========= */
 const CATEGORIES = [
-  "全部","表演藝術","展覽","音樂現場","講座","電影",
-  "城市生活圈","親子活動","城外行腳","專題特區","封面故事",
+  "全部", "表演藝術", "展覽", "音樂現場", "講座", "電影",
+  "城市生活圈", "親子活動", "城外行腳", "專題特區", "封面故事",
 ] as const;
 
 const PRICE_OPTS = ["全部", "免費", "售票", "索票"] as const;
-const TIME_OPTS  = ["今日", "明日", "近30日", "本星期", "週末"] as const;
+const TIME_OPTS = ["今日", "明日", "近30日", "本星期", "週末"] as const;
 
 const DEFAULTS = {
   categories: new Set<string>(["全部"]),
@@ -78,7 +78,7 @@ function formatDateRangeOnly(e: EventItem) {
 
 /* ========= 工具：時間區間計算（本地時區） ========= */
 function startOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0); }
-function endOfDay(d: Date)   { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999); }
+function endOfDay(d: Date) { return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999); }
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function toSec(d: Date) { return Math.floor(d.getTime() / 1000); }
 
@@ -249,13 +249,13 @@ function SearchPageInner() {
 
   // 篩選狀態
   const [categories, setCategories] = useState<Set<string>>(new Set(DEFAULTS.categories));
-  const [prices, setPrices]         = useState<Set<string>>(new Set(DEFAULTS.prices));
-  const [times, setTimes]           = useState<Set<string>>(new Set(DEFAULTS.times));
-  const [tab, setTab]               = useState<"分類" | "票價" | "時間">("分類");
+  const [prices, setPrices] = useState<Set<string>>(new Set(DEFAULTS.prices));
+  const [times, setTimes] = useState<Set<string>>(new Set(DEFAULTS.times));
+  const [tab, setTab] = useState<"分類" | "票價" | "時間">("分類");
 
   // 結果 + 分頁
-  const [items, setItems]     = useState<EventItem[]>([]);
-  const [offset, setOffset]   = useState(0);
+  const [items, setItems] = useState<EventItem[]>([]);
+  const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [firstLoad, setFirst] = useState(true);
@@ -326,7 +326,7 @@ function SearchPageInner() {
   };
 
   const FIRST_MIN_SPIN_MS = 1200; // 首次載入至少轉 2 秒
-  const NEXT_MIN_SPIN_MS  = 800;  // 無限捲動每頁至少轉 0.6 秒（可視覺感受調整）
+  const NEXT_MIN_SPIN_MS = 800;  // 無限捲動每頁至少轉 0.6 秒（可視覺感受調整）
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -393,7 +393,7 @@ function SearchPageInner() {
     // 時間（合併為一個範圍）
     const { start, end } = computeTimeRange(times);
     if (start) sp.set("start_timestamp", String(start));
-    if (end)   sp.set("end_timestamp", String(end));
+    if (end) sp.set("end_timestamp", String(end));
 
     // 分頁 & 排序
     sp.set("limit", String(PAGE_SIZE));
@@ -503,7 +503,7 @@ function SearchPageInner() {
     setState(next);
   };
   const toggleCategory = (name: string) => toggleWithAll(name, categories, setCategories, "全部");
-  const togglePrice    = (name: string) => toggleWithAll(name, prices, setPrices, "全部");
+  const togglePrice = (name: string) => toggleWithAll(name, prices, setPrices, "全部");
   const toggleTime = (name: string) => {
     const next = new Set(times);
     if (next.has(name)) next.delete(name); else next.add(name);
@@ -524,9 +524,9 @@ function SearchPageInner() {
   };
 
   // ---- 已選擇 chips（不顯示「全部」）----
-  const selectedCats  = Array.from(categories).filter((c) => c !== "全部");
+  const selectedCats = Array.from(categories).filter((c) => c !== "全部");
   const selectedPrice = Array.from(prices).filter((p) => p !== "全部");
-  const selectedTime  = Array.from(times);
+  const selectedTime = Array.from(times);
   const chips = [
     ...selectedCats.map((c) => ({ label: c, remove: () => toggleCategory(c) })),
     ...selectedPrice.map((p) => ({ label: p, remove: () => togglePrice(p) })),
@@ -542,28 +542,28 @@ function SearchPageInner() {
 
         {/* 已選擇 chips（簡潔） */}
         {chips.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
+          <div className="mb-3 flex flex-wrap gap-1.5">
             {chips.map((c, i) => (
-            <span
+              <span
                 key={`${c.label}-${i}`}
                 className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs"
                 style={{ borderColor: ACCENT, color: ACCENT }}
-            >
+              >
                 {c.label}
                 <button
-                aria-label={`清除 ${c.label}`}
-                onClick={() => {
+                  aria-label={`清除 ${c.label}`}
+                  onClick={() => {
                     c.remove();               // 先更新已選條件
                     setTimeout(loadFirstPage, 0); // 下一個 tick 重新查詢
-                }}
-                className="rounded-full px-1 leading-none hover:bg-black/5"
-                style={{ color: ACCENT }}
+                  }}
+                  className="rounded-full px-1 leading-none hover:bg-black/5"
+                  style={{ color: ACCENT }}
                 >
-                ×
+                  ×
                 </button>
-            </span>
+              </span>
             ))}
-        </div>
+          </div>
         )}
 
         {/* 結果列表 */}
@@ -644,9 +644,8 @@ function SearchPageInner() {
 
       {/* Bottom Sheet */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[420px] ${
-          open ? "translate-y-0" : "translate-y-full"
-        } transition-transform duration-300 will-change-transform`}
+        className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[420px] ${open ? "translate-y-0" : "translate-y-full"
+          } transition-transform duration-300 will-change-transform`}
       >
         <div className="rounded-t-3xl bg-white shadow-2xl border border-neutral-200">
           <div className="px-4 pt-3">

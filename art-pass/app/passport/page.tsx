@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { FullBleedCard } from "@/components/passport/fullbleed-card";
 import MorphDialog, { type MorphOrigin } from "@/components/passport/morph-dialog";
 
-const API_BASE = "https://4dimo.020908.xyz:8443";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://4dimo.020908.xyz:8443";
 
 type EventItem = {
   event_id?: string | number;
@@ -305,9 +305,8 @@ function PassportPageInner() {
                   return (
                     <li
                       key={cardKey}
-                      className={`rounded-lg px-3 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer ${
-                        isCurrent ? "bg-white/10" : ""
-                      }`}
+                      className={`rounded-lg px-3 py-2 text-sm text-white/90 hover:bg-white/10 cursor-pointer ${isCurrent ? "bg-white/10" : ""
+                        }`}
                       onClick={() => {
                         setPickerOpen(false);
                         scrollToCard(it);

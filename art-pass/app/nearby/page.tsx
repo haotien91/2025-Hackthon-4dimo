@@ -25,7 +25,7 @@ const DEFAULT_BASEMAP = {
   },
 };
 
-const API_BASE = "https://4dimo.020908.xyz:8443";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "https://4dimo.020908.xyz:8443";
 const VENUE_API = `${API_BASE}/venue`;
 const platformApiUrl = (platformName: string) => {
   const now = Math.floor(Date.now() / 1000);
@@ -150,56 +150,56 @@ export default function NearbyPage() {
 
   const hitCirclesRef = useRef<any[]>([]);
   // 讓 Leaflet 事件永遠讀到最新資料
-const venuesRef = useRef<Venue[]>([]);
-useEffect(() => { venuesRef.current = venues; }, [venues]);
+  const venuesRef = useRef<Venue[]>([]);
+  useEffect(() => { venuesRef.current = venues; }, [venues]);
 
-const selectedIdxRef = useRef<number | null>(null);
-useEffect(() => { selectedIdxRef.current = selectedIdx; }, [selectedIdx]);
+  const selectedIdxRef = useRef<number | null>(null);
+  useEffect(() => { selectedIdxRef.current = selectedIdx; }, [selectedIdx]);
 
-useEffect(() => {
+  useEffect(() => {
     selectVenueRef.current = async (i: number, fly = false) => {
-    const v = venuesRef.current[i];
-    if (!mapRef.current || !v) return; // 用最新 venuesRef
+      const v = venuesRef.current[i];
+      if (!mapRef.current || !v) return; // 用最新 venuesRef
 
-    setSelectedIdx(i);
-    recolor(i);
+      setSelectedIdx(i);
+      recolor(i);
 
-    if (hasLatLng(v) && fly) {
-      mapRef.current.flyTo([v.latitude as number, v.longitude as number], 14, { duration: 0.5 });
-    }
-
-    setEventsLoading(true);
-    setEvIdx(0);
-
-    if (evAbortRef.current) evAbortRef.current.abort();
-    const ac = new AbortController();
-    evAbortRef.current = ac;
-
-    try {
-      const url = platformApiUrl(v.platform || "");
-      const res = await fetch(url, { cache: "no-store", signal: ac.signal });
-      if (res.status === 404) {
-        setEvents([]);
-      } else {
-        const text = await res.text();
-        const cleaned = text.trim().replace(/%+$/, "");
-        const arr: EventItem[] = cleaned ? JSON.parse(cleaned) : [];
-        setEvents(Array.isArray(arr) ? arr : []);
+      if (hasLatLng(v) && fly) {
+        mapRef.current.flyTo([v.latitude as number, v.longitude as number], 14, { duration: 0.5 });
       }
-    } catch (e: any) {
-      if (e?.name !== "AbortError") console.error("載入活動失敗：", e);
-      setEvents([]);
-    } finally {
-      setEventsLoading(false);
-    }
-  };
-  // 沒有 deps：因為讀的是 *ref.current*，始終是最新
-}, []);
 
-// 用來存「最新版本」的 selectVenue（事件只呼叫這個 ref）
-const selectVenueRef = useRef<(i: number, fly?: boolean) => void>(() => {});
-// 提供一個穩定函式給 React 內部呼叫（會轉呼 ref）
-const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
+      setEventsLoading(true);
+      setEvIdx(0);
+
+      if (evAbortRef.current) evAbortRef.current.abort();
+      const ac = new AbortController();
+      evAbortRef.current = ac;
+
+      try {
+        const url = platformApiUrl(v.platform || "");
+        const res = await fetch(url, { cache: "no-store", signal: ac.signal });
+        if (res.status === 404) {
+          setEvents([]);
+        } else {
+          const text = await res.text();
+          const cleaned = text.trim().replace(/%+$/, "");
+          const arr: EventItem[] = cleaned ? JSON.parse(cleaned) : [];
+          setEvents(Array.isArray(arr) ? arr : []);
+        }
+      } catch (e: any) {
+        if (e?.name !== "AbortError") console.error("載入活動失敗：", e);
+        setEvents([]);
+      } finally {
+        setEventsLoading(false);
+      }
+    };
+    // 沒有 deps：因為讀的是 *ref.current*，始終是最新
+  }, []);
+
+  // 用來存「最新版本」的 selectVenue（事件只呼叫這個 ref）
+  const selectVenueRef = useRef<(i: number, fly?: boolean) => void>(() => { });
+  // 提供一個穩定函式給 React 內部呼叫（會轉呼 ref）
+  const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
 
 
   const hasLatLng = (v?: Venue) =>
@@ -243,28 +243,28 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
     });
   };
 
-    const syncDivMarkerSize = () => {
-        if (!mapRef.current) return;
-        const d = Math.round(computeRadius(mapRef.current.getZoom()) * 2);
+  const syncDivMarkerSize = () => {
+    if (!mapRef.current) return;
+    const d = Math.round(computeRadius(mapRef.current.getZoom()) * 2);
 
-        venueMarkersRef.current.forEach((m) => {
-            const el: HTMLElement | null = m?.getElement?.() ?? null;
-            if (!el) return;
-            el.style.width = `${d}px`;
-            el.style.height = `${d}px`;
-            const dot = el.querySelector(".venue-dot") as HTMLElement | null;
-            if (dot) {
-            dot.style.width = `${d}px`;
-            dot.style.height = `${d}px`;
-            }
-        });
+    venueMarkersRef.current.forEach((m) => {
+      const el: HTMLElement | null = m?.getElement?.() ?? null;
+      if (!el) return;
+      el.style.width = `${d}px`;
+      el.style.height = `${d}px`;
+      const dot = el.querySelector(".venue-dot") as HTMLElement | null;
+      if (dot) {
+        dot.style.width = `${d}px`;
+        dot.style.height = `${d}px`;
+      }
+    });
 
-        // ✅ 命中圈半徑（比視覺點更大、好點）
-        const hitR = Math.max(16, Math.round(computeRadius(mapRef.current.getZoom()) * 2.2));
-        hitCirclesRef.current.forEach((h) => h && h.setRadius(hitR));
+    // ✅ 命中圈半徑（比視覺點更大、好點）
+    const hitR = Math.max(16, Math.round(computeRadius(mapRef.current.getZoom()) * 2.2));
+    hitCirclesRef.current.forEach((h) => h && h.setRadius(hitR));
 
-        if (userMarkerRef.current) userMarkerRef.current.setRadius(Math.max(d / 2 + 1, 4));
-    };
+    if (userMarkerRef.current) userMarkerRef.current.setRadius(Math.max(d / 2 + 1, 4));
+  };
 
   // === mount 初始化地圖 ===
   useEffect(() => {
@@ -278,7 +278,7 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
 
       const el: any = mapDivRef.current;
       if (el && el._leaflet_id) {
-        try { el._leaflet_id = undefined; } catch {}
+        try { el._leaflet_id = undefined; } catch { }
         el.innerHTML = "";
       }
 
@@ -324,40 +324,40 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
         const diameter = Math.round(computeRadius(map.getZoom()) * 2);
 
         list.forEach((v, i) => {
-            if (!hasLatLng(v)) return;
-            const ll: [number, number] = [v.latitude as number, v.longitude as number];
-            pts.push(ll);
+          if (!hasLatLng(v)) return;
+          const ll: [number, number] = [v.latitude as number, v.longitude as number];
+          pts.push(ll);
 
-            const marker = (L as any)
-                .marker(ll, {
-                icon: makeVenueIcon(diameter, YELLOW),
-                interactive: true,
-                keyboard: false,
-                bubblingMouseEvents: true,
-                zIndexOffset: 1000,
-                riseOnHover: true,
-                })
-                .addTo(map)
-                .on("click", () => selectVenueRef.current(i, true));
+          const marker = (L as any)
+            .marker(ll, {
+              icon: makeVenueIcon(diameter, YELLOW),
+              interactive: true,
+              keyboard: false,
+              bubblingMouseEvents: true,
+              zIndexOffset: 1000,
+              riseOnHover: true,
+            })
+            .addTo(map)
+            .on("click", () => selectVenueRef.current(i, true));
 
-            // ✅ 透明可點擊圈（比較好點、也不受 overlay 影響）
-            const hit = (L as any)
-                .circleMarker(ll, {
-                radius: 16,           // 命中半徑，下面會跟著 zoom 調整
-                stroke: false,
-                fill: true,
-                fillColor: "#000",
-                fillOpacity: 0.001,       // 完全透明，但仍可接收事件
-                interactive: true,
-                bubblingMouseEvents: false, // 避免點到後又冒泡到 map click
-                })
-                .addTo(map)
-                .on("click", () => selectVenueRef.current(i, true))
-                .on("mouseover", () => map.getContainer().style.cursor = "pointer")
-                .on("mouseout",  () => map.getContainer().style.cursor = "");
+          // ✅ 透明可點擊圈（比較好點、也不受 overlay 影響）
+          const hit = (L as any)
+            .circleMarker(ll, {
+              radius: 16,           // 命中半徑，下面會跟著 zoom 調整
+              stroke: false,
+              fill: true,
+              fillColor: "#000",
+              fillOpacity: 0.001,       // 完全透明，但仍可接收事件
+              interactive: true,
+              bubblingMouseEvents: false, // 避免點到後又冒泡到 map click
+            })
+            .addTo(map)
+            .on("click", () => selectVenueRef.current(i, true))
+            .on("mouseover", () => map.getContainer().style.cursor = "pointer")
+            .on("mouseout", () => map.getContainer().style.cursor = "");
 
-            venueMarkersRef.current[i] = marker;
-            hitCirclesRef.current[i] = hit;
+          venueMarkersRef.current[i] = marker;
+          hitCirclesRef.current[i] = hit;
         });
 
         recolor(selectedIdx);
@@ -374,65 +374,65 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
         setHasGeo(true);
         navigator.geolocation.getCurrentPosition(
           (pos) => { placeOrUpdateUser(pos.coords.latitude, pos.coords.longitude, true); },
-          () => {},
+          () => { },
           { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
         );
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => { placeOrUpdateUser(pos.coords.latitude, pos.coords.longitude, false); },
-          () => {},
+          () => { },
           { enableHighAccuracy: true, maximumAge: 5000 }
         );
       }
 
       function placeOrUpdateUser(lat: number, lng: number, fly: boolean) {
-            setUserLL({ lat, lng });
-            if (!mapRef.current) return;
-            if (!userMarkerRef.current) {
-            userMarkerRef.current = (L as any)
-                .circleMarker([lat, lng], {
-                radius: Math.max(computeRadius(map.getZoom()) + 1, 4),
-                stroke: false,
-                fillColor: ACCENT,
-                fillOpacity: 1,
-                })
-                .addTo(map);
-            userCircleRef.current = (L as any)
-                .circle([lat, lng], {
-                radius: 60,
-                color: ACCENT,
-                fillColor: ACCENT,
-                fillOpacity: 0.15,
-                weight: 1,
-                })
-                .addTo(map);
-            } else {
-            userMarkerRef.current.setLatLng([lat, lng]);
-            userCircleRef.current?.setLatLng([lat, lng]);
-            }
-            if (fly) map.flyTo([lat, lng], 14, { duration: 0.8 });
+        setUserLL({ lat, lng });
+        if (!mapRef.current) return;
+        if (!userMarkerRef.current) {
+          userMarkerRef.current = (L as any)
+            .circleMarker([lat, lng], {
+              radius: Math.max(computeRadius(map.getZoom()) + 1, 4),
+              stroke: false,
+              fillColor: ACCENT,
+              fillOpacity: 1,
+            })
+            .addTo(map);
+          userCircleRef.current = (L as any)
+            .circle([lat, lng], {
+              radius: 60,
+              color: ACCENT,
+              fillColor: ACCENT,
+              fillOpacity: 0.15,
+              weight: 1,
+            })
+            .addTo(map);
+        } else {
+          userMarkerRef.current.setLatLng([lat, lng]);
+          userCircleRef.current?.setLatLng([lat, lng]);
         }
+        if (fly) map.flyTo([lat, lng], 14, { duration: 0.8 });
+      }
 
-        function selectNearestVenueAt(latlng: { lat: number; lng: number }) {
-            const map = mapRef.current;
-            if (!map || !venues.length) return;
-            map.on("click", (e: any) => selectNearestVenueAt(e.latlng));
-            const p = map.latLngToLayerPoint(latlng);
+      function selectNearestVenueAt(latlng: { lat: number; lng: number }) {
+        const map = mapRef.current;
+        if (!map || !venues.length) return;
+        map.on("click", (e: any) => selectNearestVenueAt(e.latlng));
+        const p = map.latLngToLayerPoint(latlng);
 
-            let bestI = -1;
-            let bestD = Infinity;
-            venues.forEach((v, i) => {
-                if (!hasLatLng(v)) return;
-                const q = map.latLngToLayerPoint([v.latitude as number, v.longitude as number]);
-                const d = Math.hypot(q.x - p.x, q.y - p.y);
-                if (d < bestD) { bestD = d; bestI = i; }
-            });
+        let bestI = -1;
+        let bestD = Infinity;
+        venues.forEach((v, i) => {
+          if (!hasLatLng(v)) return;
+          const q = map.latLngToLayerPoint([v.latitude as number, v.longitude as number]);
+          const d = Math.hypot(q.x - p.x, q.y - p.y);
+          if (d < bestD) { bestD = d; bestI = i; }
+        });
 
-            // 門檻（像素）：越放大門檻越小、越縮小門檻越大
-            const pxThreshold = Math.max(20, computeRadius(map.getZoom()) * 3);
-            if (bestI >= 0 && bestD <= pxThreshold) {
-                selectVenue(bestI, true);
-            }
+        // 門檻（像素）：越放大門檻越小、越縮小門檻越大
+        const pxThreshold = Math.max(20, computeRadius(map.getZoom()) * 3);
+        if (bestI >= 0 && bestD <= pxThreshold) {
+          selectVenue(bestI, true);
         }
+      }
 
       return () => {
         try {
@@ -502,7 +502,7 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
         const { latitude, longitude } = pos.coords;
         mapRef.current!.flyTo([latitude, longitude], 15, { duration: 0.6 });
       },
-      () => {},
+      () => { },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   };
@@ -545,21 +545,21 @@ const selectVenue = (i: number, fly = false) => selectVenueRef.current(i, fly);
 
           <div className="pointer-events-none absolute inset-y-0 left-0 w-35 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-35 bg-gradient-to-l from-black/60 via-black/20 to-transparent" />
-        
+
 
           {/* 透明遮罩：擴大「不可點擊（不穿透）」區域 */}
-            <div
-                className="absolute inset-y-0 left-0 w-28 z-20 bg-transparent pointer-events-auto"
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={(e) => e.stopPropagation()}
-                aria-hidden
-            />
-            <div
-                className="absolute inset-y-0 right-0 w-28 z-20 bg-transparent pointer-events-auto"
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={(e) => e.stopPropagation()}
-                aria-hidden
-            />
+          <div
+            className="absolute inset-y-0 left-0 w-28 z-20 bg-transparent pointer-events-auto"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={(e) => e.stopPropagation()}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-y-0 right-0 w-28 z-20 bg-transparent pointer-events-auto"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={(e) => e.stopPropagation()}
+            aria-hidden
+          />
           <button
             onClick={moveLeft}
             className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-2xl text-white select-none z-30"
