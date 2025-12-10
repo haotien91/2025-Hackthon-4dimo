@@ -97,8 +97,8 @@
 
 **1. 複製專案庫**
 ```bash
-git clone https://github.com/your-repo/townpass-art-pass.git
-cd townpass-art-pass
+git clone https://github.com/taipei-doit/townpass2025-art-pass.git
+cd townpass2025-art-pass
 ```
 
 **2. 安裝並啟動後端 API**
@@ -168,9 +168,6 @@ ENABLE_CORS=true
 ART_PACE_URL=https://art-pass-seven.vercel.app/
 ```
 
-#### Docker 執行方式（若有）
-> ⚠️ Docker 配置尚未提供，規劃於未來版本加入。
-
 ---
 
 ### 4. 功能說明 / Features
@@ -189,19 +186,16 @@ ART_PACE_URL=https://art-pass-seven.vercel.app/
 
 ### 1. 使用到的 AI 模型
 
-- **ChatGPT**：GPT-4o
-- **Gemini**：Gemini 2.5 Pro
-- **Claude**：Claude Sonnet 4
-- **影像生成**：未使用
-- **自行架設 / 本地模型**：未使用
+- **ChatGPT**：GPT-5.1
+- **Claude**：Claude Sonnet 4.5
 
-### 2. 使用範圍（清楚列點）
+### 2. 使用範圍
 
 **程式碼產生**：
-- 前端元件雛形：約佔總程式碼的 **40%**
+- 前端元件雛形：約佔總程式碼的 **70%**
   - 特定功能模組：EventCard、FilterSheet、MapView、MorphDialog 等核心元件的初始架構
   - TypeScript 型別定義與介面設計
-- 後端 API 雛形：約佔總程式碼的 **30%**
+- 後端 API 雛形：約佔總程式碼的 **60%**
   - 特定功能模組：活動資料管理、使用者資料 CRUD、篩選邏輯等
 
 **UI/UX 設計協助**：
@@ -210,16 +204,8 @@ ART_PACE_URL=https://art-pass-seven.vercel.app/
 - 互動流程優化建議
 
 **文字生成**：
-- README、ARCHITECTURE.md、API_SPEC.md 等技術文件的初稿撰寫與潤飾
-- 程式碼註釋與文件翻譯（中英對照）
+- README.md 等技術文件的初稿撰寫與潤飾
 
-**測試案例 / 文件生成**：
-- API 測試案例設計
-- 使用者情境模擬與邊緣案例分析
-
-**資料清洗或摘要**：
-- 從台北市文化快遞開放資料中快速摘要關鍵欄位
-- 資料欄位對應邏輯設計與建議清洗流程
 
 ### 3. AI 產生內容如何被驗證或修改
 
